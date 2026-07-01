@@ -1,4 +1,0 @@
-Screenshots for the README go here:
-- notes-desktop.png
-- all-notes.png
-- note-editor.png
