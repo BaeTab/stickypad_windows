@@ -1,0 +1,427 @@
+<Window
+    x:Class="StickyPad.Views.NoteWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:m="clr-namespace:StickyPad.Models"
+    xmlns:u="clr-namespace:StickyPad.Utils"
+    Title="Sticky"
+    MinWidth="220"
+    MinHeight="180"
+    AllowsTransparency="True"
+    Background="Transparent"
+    FontFamily="Segoe UI"
+    Opacity="{Binding Opacity}"
+    ResizeMode="CanResizeWithGrip"
+    ShowInTaskbar="False"
+    SnapsToDevicePixels="True"
+    TextOptions.TextFormattingMode="Display"
+    Topmost="{Binding IsAlwaysOnTop}"
+    UseLayoutRounding="True"
+    WindowStyle="None">
+
+    <Window.Resources>
+        <Style x:Key="ChromeButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Foreground" Value="{Binding SubtleForegroundBrush}" />
+            <Setter Property="Padding" Value="6,2" />
+            <Setter Property="MinWidth" Value="28" />
+            <Setter Property="Height" Value="24" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="4">
+                            <ContentPresenter
+                                Margin="{TemplateBinding Padding}"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#22000000" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#33000000" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.5" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="FormatToggle" TargetType="ToggleButton">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Foreground" Value="{Binding ForegroundBrush}" />
+            <Setter Property="MinWidth" Value="28" />
+            <Setter Property="Height" Value="26" />
+            <Setter Property="Padding" Value="4,0" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="4">
+                            <ContentPresenter
+                                Margin="{TemplateBinding Padding}"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#1A000000" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#33000000" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="VerticalSeparator" TargetType="Border">
+            <Setter Property="Width" Value="1" />
+            <Setter Property="Margin" Value="4,4" />
+            <Setter Property="Background" Value="#22000000" />
+        </Style>
+    </Window.Resources>
+
+    <Border
+        x:Name="Root"
+        Background="{Binding BackgroundBrush}"
+        BorderBrush="{Binding BorderBrush}"
+        BorderThickness="1"
+        CornerRadius="8">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="16" Opacity="0.28" ShadowDepth="2" />
+        </Border.Effect>
+
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <Border
+                x:Name="HeaderBar"
+                Grid.Row="0"
+                Height="30"
+                Background="{Binding HeaderBrush}"
+                CornerRadius="8,8,0,0"
+                MouseLeftButtonDown="HeaderBar_OnMouseLeftButtonDown">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <ToggleButton
+                        x:Name="ColorPickerToggle"
+                        Grid.Column="0"
+                        Width="16"
+                        Height="16"
+                        Margin="8,0,0,0"
+                        VerticalAlignment="Center"
+                        Padding="0"
+                        Cursor="Hand"
+                        FocusVisualStyle="{x:Null}"
+                        ToolTip="Change color">
+                        <ToggleButton.Template>
+                            <ControlTemplate TargetType="ToggleButton">
+                                <Ellipse
+                                    Fill="{Binding BackgroundBrush}"
+                                    Stroke="{Binding BorderBrush}"
+                                    StrokeThickness="1.5" />
+                            </ControlTemplate>
+                        </ToggleButton.Template>
+                    </ToggleButton>
+
+                    <Popup
+                        Grid.Column="0"
+                        AllowsTransparency="True"
+                        IsOpen="{Binding IsChecked, ElementName=ColorPickerToggle, Mode=TwoWay}"
+                        Placement="Bottom"
+                        PlacementTarget="{Binding ElementName=ColorPickerToggle}"
+                        StaysOpen="False">
+                        <Border
+                            Margin="6"
+                            Padding="8"
+                            Background="#FFFFFF"
+                            BorderBrush="#33000000"
+                            BorderThickness="1"
+                            CornerRadius="6">
+                            <Border.Effect>
+                                <DropShadowEffect BlurRadius="14" Opacity="0.25" ShadowDepth="2" />
+                            </Border.Effect>
+                            <ItemsControl ItemsSource="{Binding Palette}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type m:NoteTheme}">
+                                        <Button
+                                            Width="26"
+                                            Height="26"
+                                            Margin="3,0"
+                                            Click="ColorSwatch_OnClick"
+                                            Cursor="Hand"
+                                            FocusVisualStyle="{x:Null}"
+                                            Tag="{Binding Color}"
+                                            ToolTip="{Binding DisplayName}">
+                                            <Button.Template>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Grid>
+                                                        <Ellipse
+                                                            Fill="{Binding Background, Converter={StaticResource ColorToBrush}}"
+                                                            Stroke="{Binding Border, Converter={StaticResource ColorToBrush}}"
+                                                            StrokeThickness="1.5" />
+                                                    </Grid>
+                                                </ControlTemplate>
+                                            </Button.Template>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </Border>
+                    </Popup>
+
+                    <TextBlock
+                        Grid.Column="1"
+                        Margin="8,0,8,0"
+                        VerticalAlignment="Center"
+                        FontSize="11"
+                        Foreground="{Binding SubtleForegroundBrush}"
+                        IsHitTestVisible="False"
+                        Text="{Binding Title}"
+                        TextTrimming="CharacterEllipsis" />
+
+                    <StackPanel Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center" Orientation="Horizontal">
+                        <ToggleButton
+                            Cursor="Hand"
+                            IsChecked="{Binding IsPreviewMode}"
+                            Style="{StaticResource FormatToggle}"
+                            ToolTip="Preview / Edit (Ctrl+E)"
+                            Content="Eye" />
+                        <ToggleButton
+                            Cursor="Hand"
+                            IsChecked="{Binding IsAlwaysOnTop}"
+                            Style="{StaticResource FormatToggle}"
+                            ToolTip="Always on top"
+                            Content="Pin" />
+                        <Button
+                            Click="NewButton_OnClick"
+                            Style="{StaticResource ChromeButton}"
+                            ToolTip="New note (Ctrl+Shift+N)"
+                            Content="+" />
+                        <Button
+                            Click="ListButton_OnClick"
+                            Style="{StaticResource ChromeButton}"
+                            ToolTip="All notes (Ctrl+Shift+L)"
+                            Content="≡" />
+                        <Button
+                            Click="DeleteButton_OnClick"
+                            Style="{StaticResource ChromeButton}"
+                            ToolTip="Delete note"
+                            Content="Del" />
+                        <Button
+                            Margin="0,0,4,0"
+                            Click="CloseButton_OnClick"
+                            Style="{StaticResource ChromeButton}"
+                            ToolTip="Hide (saves)"
+                            Content="x" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <Border
+                x:Name="FormatBar"
+                Grid.Row="1"
+                Padding="6,3"
+                Background="#11000000"
+                Opacity="0.0">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsToolbarVisible, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                                <DataTrigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation
+                                                Storyboard.TargetProperty="Opacity"
+                                                To="1.0"
+                                                Duration="0:0:0.15" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </DataTrigger.EnterActions>
+                                <DataTrigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation
+                                                Storyboard.TargetProperty="Opacity"
+                                                To="0.0"
+                                                Duration="0:0:0.15" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </DataTrigger.ExitActions>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+
+                <DockPanel LastChildFill="True">
+                    <StackPanel Margin="6,0,0,0" DockPanel.Dock="Right" Orientation="Horizontal">
+                        <TextBlock
+                            Margin="0,0,4,0"
+                            VerticalAlignment="Center"
+                            FontSize="10"
+                            Foreground="{Binding SubtleForegroundBrush}"
+                            Text="α" />
+                        <Slider
+                            Width="70"
+                            VerticalAlignment="Center"
+                            Maximum="1.0"
+                            Minimum="0.5"
+                            SmallChange="0.05"
+                            ToolTip="Opacity"
+                            Value="{Binding Opacity, Mode=TwoWay}" />
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal">
+                        <ComboBox
+                            x:Name="FontSizeCombo"
+                            Width="58"
+                            Height="24"
+                            VerticalContentAlignment="Center"
+                            FontSize="12"
+                            ItemsSource="{Binding FontSizeChoices, RelativeSource={RelativeSource AncestorType=Window}}"
+                            SelectionChanged="FontSizeCombo_OnSelectionChanged"
+                            ToolTip="Font size" />
+
+                        <Border Style="{StaticResource VerticalSeparator}" />
+
+                        <ToggleButton
+                            x:Name="BoldToggle"
+                            Click="BoldToggle_OnClick"
+                            FontWeight="Bold"
+                            Style="{StaticResource FormatToggle}"
+                            ToolTip="Bold (Ctrl+B)"
+                            Content="B" />
+                        <ToggleButton
+                            x:Name="ItalicToggle"
+                            Click="ItalicToggle_OnClick"
+                            FontStyle="Italic"
+                            Style="{StaticResource FormatToggle}"
+                            ToolTip="Italic (Ctrl+I)"
+                            Content="I" />
+                        <ToggleButton
+                            x:Name="UnderlineToggle"
+                            Click="UnderlineToggle_OnClick"
+                            Style="{StaticResource FormatToggle}"
+                            ToolTip="Underline (Ctrl+U)">
+                            <TextBlock Text="U" TextDecorations="Underline" />
+                        </ToggleButton>
+                        <ToggleButton
+                            x:Name="StrikeToggle"
+                            Click="StrikeToggle_OnClick"
+                            Style="{StaticResource FormatToggle}"
+                            ToolTip="Strikethrough (Ctrl+Shift+X)">
+                            <TextBlock Text="S" TextDecorations="Strikethrough" />
+                        </ToggleButton>
+
+                        <Border Style="{StaticResource VerticalSeparator}" />
+
+                        <ToggleButton
+                            x:Name="AlignLeftToggle"
+                            Click="AlignLeftToggle_OnClick"
+                            Style="{StaticResource FormatToggle}"
+                            ToolTip="Align left (Ctrl+L)"
+                            Content="◧" />
+                        <ToggleButton
+                            x:Name="AlignCenterToggle"
+                            Click="AlignCenterToggle_OnClick"
+                            Style="{StaticResource FormatToggle}"
+                            ToolTip="Align center (Ctrl+E)"
+                            Content="≡" />
+                        <ToggleButton
+                            x:Name="AlignRightToggle"
+                            Click="AlignRightToggle_OnClick"
+                            Style="{StaticResource FormatToggle}"
+                            ToolTip="Align right (Ctrl+R)"
+                            Content="◨" />
+
+                        <Border Style="{StaticResource VerticalSeparator}" />
+
+                        <ToggleButton
+                            x:Name="BulletsToggle"
+                            Click="BulletsToggle_OnClick"
+                            Style="{StaticResource FormatToggle}"
+                            ToolTip="Bulleted list"
+                            Content="•" />
+                        <ToggleButton
+                            x:Name="NumberingToggle"
+                            Click="NumberingToggle_OnClick"
+                            Style="{StaticResource FormatToggle}"
+                            ToolTip="Numbered list"
+                            Content="1." />
+                        <Button
+                            Click="TaskItem_OnClick"
+                            Style="{StaticResource ChromeButton}"
+                            ToolTip="Insert task (☐)"
+                            Content="☐" />
+                        <Button
+                            Click="InlineCode_OnClick"
+                            Style="{StaticResource ChromeButton}"
+                            ToolTip="Inline code (Ctrl+`)"
+                            Content="&lt;/&gt;" />
+                        <Button
+                            Click="CodeBlock_OnClick"
+                            Style="{StaticResource ChromeButton}"
+                            ToolTip="Code block"
+                            Content="{}{ }" />
+                        <Button
+                            Click="ClearFormatting_OnClick"
+                            Style="{StaticResource ChromeButton}"
+                            ToolTip="Clear formatting"
+                            Content="Tx" />
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+
+            <RichTextBox
+                x:Name="Editor"
+                Grid.Row="2"
+                Margin="10,8,10,12"
+                AcceptsTab="True"
+                AutoWordSelection="True"
+                Background="Transparent"
+                BorderThickness="0"
+                CaretBrush="{Binding ForegroundBrush}"
+                FontSize="{Binding EditorFontSize, Mode=TwoWay}"
+                Foreground="{Binding ForegroundBrush}"
+                IsReadOnly="{Binding IsPreviewMode}"
+                IsUndoEnabled="True"
+                SelectionChanged="Editor_OnSelectionChanged"
+                SpellCheck.IsEnabled="True"
+                TextChanged="Editor_OnTextChanged"
+                VerticalScrollBarVisibility="Auto">
+                <RichTextBox.Resources>
+                    <Style TargetType="{x:Type Paragraph}">
+                        <Setter Property="Margin" Value="0,0,0,4" />
+                    </Style>
+                </RichTextBox.Resources>
+            </RichTextBox>
+        </Grid>
+    </Border>
+</Window>
