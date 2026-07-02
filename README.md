@@ -152,6 +152,25 @@ Open `stickypad.sln` in Visual Studio 2022 (17.8+) if you prefer the IDE.
 - **Delete safely:** deleting moves a note to the **Trash** tab; restore it there, or empty the bin. Anything left 30 days is purged automatically.
 - **Back up:** tray menu → *Export backup…* writes a JSON file; *Import backup…* restores it (notes with the same id are overwritten).
 
+### Markdown & HTML modes
+
+Each note can be plain **Text**, **Markdown**, or **HTML**. Pick the mode from the buttons in the note's header:
+
+> `T` = Text (rich) · `M` = Markdown · `</>` = HTML · `👁` = Preview / Edit toggle
+
+**Steps to render:**
+1. Click **`M`** (Markdown) or **`</>`** (HTML) to switch the note's mode.
+2. Type or paste your source — this is the **edit view**, so you'll see the raw Markdown/HTML text (that's expected).
+3. Click the **`👁` (Eye)** button, or press **`Ctrl+E`**, to switch to the **rendered preview**.
+
+Press **`Ctrl+E`** any time to flip between source and rendered. When you **reopen** a Markdown/HTML note later, it opens **already rendered**.
+
+- Links in a rendered note open in your **default browser**.
+- The preview is themed to match the note's color.
+- Rendering uses the **WebView2 runtime** (built into Windows 11 and most Windows 10).
+
+> **Pasting tip:** the source editor can drop tags when you paste content copied from a *rich* source (a browser or Word), because the paste is interpreted as formatted text. Paste as plain text with **`Ctrl+Shift+V`**, or copy the code from a plain‑text / code editor.
+
 ## Where your data lives
 
 Everything is stored under your local profile:
