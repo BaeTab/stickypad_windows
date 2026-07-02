@@ -4,7 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     Title="StickyPad — Settings"
     Width="400"
-    Height="340"
+    Height="380"
     Background="#FAFAFA"
     FontFamily="Segoe UI"
     ResizeMode="NoResize"
@@ -13,6 +13,7 @@
     WindowStartupLocation="CenterScreen">
     <Grid Margin="20">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -38,10 +39,16 @@
         <CheckBox
             Grid.Row="2"
             Margin="0,12,0,0"
+            Content="새 버전 자동 확인 (GitHub 릴리즈)"
+            IsChecked="{Binding AutoCheckForUpdates}" />
+
+        <CheckBox
+            Grid.Row="3"
+            Margin="0,12,0,0"
             Content="전역 단축키 사용"
             IsChecked="{Binding GlobalHotkeysEnabled}" />
 
-        <Grid Grid.Row="3" Margin="0,14,0,0" IsEnabled="{Binding GlobalHotkeysEnabled}">
+        <Grid Grid.Row="4" Margin="0,14,0,0" IsEnabled="{Binding GlobalHotkeysEnabled}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="90" />
                 <ColumnDefinition Width="*" />
@@ -58,7 +65,7 @@
                 Text="{Binding NewNoteHotkey, Mode=OneWay}" />
         </Grid>
 
-        <Grid Grid.Row="4" Margin="0,10,0,0" IsEnabled="{Binding GlobalHotkeysEnabled}">
+        <Grid Grid.Row="5" Margin="0,10,0,0" IsEnabled="{Binding GlobalHotkeysEnabled}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="90" />
                 <ColumnDefinition Width="*" />
@@ -76,14 +83,14 @@
         </Grid>
 
         <TextBlock
-            Grid.Row="5"
+            Grid.Row="6"
             Margin="0,8,0,0"
             FontSize="11"
             Foreground="#888"
             Text="입력란을 클릭한 뒤 원하는 조합키를 누르세요 (예: Ctrl+Shift+N)." />
 
         <TextBlock
-            Grid.Row="6"
+            Grid.Row="7"
             Margin="0,10,0,0"
             VerticalAlignment="Top"
             FontSize="12"
@@ -92,7 +99,7 @@
             TextWrapping="Wrap" />
 
         <StackPanel
-            Grid.Row="7"
+            Grid.Row="8"
             HorizontalAlignment="Right"
             Orientation="Horizontal">
             <Button

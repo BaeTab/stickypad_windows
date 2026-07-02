@@ -87,6 +87,7 @@ public partial class App : Application
                 services.AddSingleton<IHotkeyService, HotkeyService>();
                 services.AddSingleton<IWindowManager, WindowManager>();
                 services.AddSingleton<IBackupService, BackupService>();
+                services.AddSingleton<IUpdateService, UpdateService>();
                 services.AddSingleton<ITrayService, TrayService>();
                 services.AddTransient<NotesListViewModel>();
                 services.AddTransient<SettingsViewModel>();
@@ -121,6 +122,12 @@ public partial class App : Application
                 newNoteHandler: () => manager.CreateAndShowNew(),
                 openNotesListHandler: manager.OpenNotesList);
             hotkeys.Apply(settings.GlobalHotkeysEnabled, settings.NewNoteHotkey, settings.NotesListHotkey);
+
+            if (settings.AutoCheckForUpdates)
+            {
+                var updater = _host.Services.GetRequiredService<IUpdateService>();
+                _ = Task.Run(() => updater.CheckAsync(userInitiated: false));
+            }
         }
         catch (Exception ex)
         {

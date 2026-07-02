@@ -75,6 +75,7 @@ StickyPad lives in your system tray and puts a note on your desktop in a single 
 - **Settings window** — toggle auto‑start, enable/disable global hotkeys, and **rebind the hotkeys** with a click‑and‑press capture field.
 - **Global hotkeys:** new note and All‑notes list from anywhere, fully configurable (or disabled).
 - **Start with Windows** — optional auto‑start via the current‑user `Run` registry key.
+- **Automatic updates** — on launch (and from the tray's *Check for updates…*) StickyPad checks GitHub Releases and, with your OK, downloads the new build and self‑replaces on restart. Toggle it in Settings.
 - **Single instance** — launching again just surfaces the running app.
 
 ### Data & backup

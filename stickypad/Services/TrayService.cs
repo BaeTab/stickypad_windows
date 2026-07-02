@@ -13,6 +13,7 @@ public sealed class TrayService : ITrayService
     private readonly IWindowManager _windowManager;
     private readonly IBackupService _backupService;
     private readonly IAutoStartService _autoStartService;
+    private readonly IUpdateService _updateService;
     private readonly ILogger<TrayService> _logger;
 
     private TaskbarIcon? _icon;
@@ -22,11 +23,13 @@ public sealed class TrayService : ITrayService
         IWindowManager windowManager,
         IBackupService backupService,
         IAutoStartService autoStartService,
+        IUpdateService updateService,
         ILogger<TrayService> logger)
     {
         _windowManager = windowManager;
         _backupService = backupService;
         _autoStartService = autoStartService;
+        _updateService = updateService;
         _logger = logger;
     }
 
@@ -97,6 +100,11 @@ public sealed class TrayService : ITrayService
         }));
 
         menu.Items.Add(new Separator());
+        menu.Items.Add(MenuItem("Check for updates…", async () =>
+        {
+            try { await _updateService.CheckAsync(userInitiated: true); }
+            catch (Exception ex) { _logger.LogError(ex, "Update check failed"); }
+        }));
         menu.Items.Add(MenuItem("Exit", () => Application.Current.Shutdown()));
 
         menu.Opened += (_, _) =>

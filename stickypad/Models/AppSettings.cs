@@ -7,4 +7,5 @@ public sealed class AppSettings
     public string NewNoteHotkey { get; set; } = "Ctrl+Shift+N";
     public string NotesListHotkey { get; set; } = "Ctrl+Shift+L";
     public bool NotesHiddenAtExit { get; set; }
+    public bool AutoCheckForUpdates { get; set; } = true;
 }

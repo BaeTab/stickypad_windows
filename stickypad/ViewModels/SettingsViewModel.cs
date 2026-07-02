@@ -26,6 +26,9 @@ public sealed partial class SettingsViewModel : ObservableObject
     private string _notesListHotkey;
 
     [ObservableProperty]
+    private bool _autoCheckForUpdates;
+
+    [ObservableProperty]
     private string? _validationError;
 
     /// Raised after a successful save so the hosting window can close itself.
@@ -43,6 +46,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         _globalHotkeysEnabled = current.GlobalHotkeysEnabled;
         _newNoteHotkey = current.NewNoteHotkey;
         _notesListHotkey = current.NotesListHotkey;
+        _autoCheckForUpdates = current.AutoCheckForUpdates;
     }
 
     [RelayCommand]
@@ -68,6 +72,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         current.NewNoteHotkey = NewNoteHotkey;
         current.NotesListHotkey = NotesListHotkey;
         current.AutoStartWithWindows = AutoStartWithWindows;
+        current.AutoCheckForUpdates = AutoCheckForUpdates;
         await _settings.SaveAsync().ConfigureAwait(true);
 
         _autoStart.SetEnabled(AutoStartWithWindows);
