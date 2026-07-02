@@ -169,7 +169,7 @@ Press **`Ctrl+E`** any time to flip between source and rendered. When you **reop
 - The preview is themed to match the note's color.
 - Rendering uses the **WebView2 runtime** (built into Windows 11 and most Windows 10).
 
-> **Pasting tip:** the source editor can drop tags when you paste content copied from a *rich* source (a browser or Word), because the paste is interpreted as formatted text. Paste as plain text with **`Ctrl+Shift+V`**, or copy the code from a plain‑text / code editor.
+> **Pasting:** in Markdown/HTML mode, pasted content is inserted as **plain text automatically**, so your tags and markup are kept exactly as copied (even from a browser or Word).
 
 ## Where your data lives
 

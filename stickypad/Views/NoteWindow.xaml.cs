@@ -101,6 +101,29 @@ public partial class NoteWindow : Window
         InputBindings.Add(new KeyBinding(
             new RelayCommandImpl(_ => ToggleInlineCode()),
             new KeyGesture(Key.OemTilde, ModifierKeys.Control)));
+
+        // In Markdown/HTML mode the editor is a plain source view — force paste to plain text
+        // so pasted tags/markup are kept literally instead of being converted to rich text.
+        DataObject.AddPastingHandler(Editor, OnEditorPasting);
+    }
+
+    private void OnEditorPasting(object sender, DataObjectPastingEventArgs e)
+    {
+        if (!IsMarkup) return; // rich mode keeps normal (formatted) paste
+
+        if (e.DataObject.GetDataPresent(DataFormats.UnicodeText))
+        {
+            var text = e.DataObject.GetData(DataFormats.UnicodeText) as string ?? string.Empty;
+            var plain = new DataObject();
+            plain.SetData(DataFormats.UnicodeText, text);
+            e.DataObject = plain;
+            e.FormatToApply = DataFormats.UnicodeText;
+        }
+        else
+        {
+            // No text form (e.g. an image) — block it rather than embedding rich content.
+            e.CancelCommand();
+        }
     }
 
     public void RequestClose()
