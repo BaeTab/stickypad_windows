@@ -3,6 +3,7 @@ using System.Windows.Input;
 using Microsoft.Extensions.Logging;
 using NHotkey;
 using NHotkey.Wpf;
+using StickyPad.Utils;
 
 namespace StickyPad.Services;
 
@@ -21,26 +22,47 @@ public sealed class HotkeyService : IHotkeyService
         _logger = logger;
     }
 
-    public void Register(Action newNoteHandler, Action openNotesListHandler)
+    public void Configure(Action newNoteHandler, Action openNotesListHandler)
     {
-        Unregister();
         _newNoteHandler = newNoteHandler;
         _notesListHandler = openNotesListHandler;
+    }
+
+    public void Apply(bool enabled, string newNoteGesture, string notesListGesture)
+    {
+        Unregister();
+        if (!enabled) return;
+        if (_newNoteHandler is null || _notesListHandler is null)
+        {
+            _logger.LogWarning("Hotkeys applied before Configure — nothing to bind");
+            return;
+        }
+
+        TryRegister(NewNoteId, newNoteGesture, "Ctrl+Shift+N", OnNewNote);
+        TryRegister(NotesListId, notesListGesture, "Ctrl+Shift+L", OnNotesList);
+        _registered = true;
+    }
+
+    private void TryRegister(string id, string gesture, string fallback, EventHandler<HotkeyEventArgs> handler)
+    {
+        if (!HotkeyGesture.TryParse(gesture, out var key, out var mods))
+        {
+            _logger.LogWarning("Invalid hotkey '{Gesture}' for {Id} — falling back to {Fallback}", gesture, id, fallback);
+            if (!HotkeyGesture.TryParse(fallback, out key, out mods)) return;
+        }
 
         try
         {
-            HotkeyManager.Current.AddOrReplace(NewNoteId, Key.N, ModifierKeys.Control | ModifierKeys.Shift, OnNewNote);
-            HotkeyManager.Current.AddOrReplace(NotesListId, Key.L, ModifierKeys.Control | ModifierKeys.Shift, OnNotesList);
-            _registered = true;
+            HotkeyManager.Current.AddOrReplace(id, key, mods, handler);
         }
         catch (HotkeyAlreadyRegisteredException ex)
         {
-            // Another app already owns the binding — log and skip; user can disable global hotkeys.
+            // Another app already owns the binding — log and skip; user can pick a different one.
             _logger.LogWarning(ex, "Hotkey conflict for {Name}", ex.Name);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to register global hotkeys");
+            _logger.LogError(ex, "Failed to register hotkey {Id} ({Gesture})", id, gesture);
         }
     }
 

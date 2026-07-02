@@ -65,6 +65,7 @@ public sealed class TrayService : ITrayService
 
         menu.Items.Add(MenuItem("New note  (Ctrl+Shift+N)", () => _windowManager.CreateAndShowNew()));
         menu.Items.Add(MenuItem("All notes…  (Ctrl+Shift+L)", () => _windowManager.OpenNotesList()));
+        menu.Items.Add(MenuItem("Settings…", () => _windowManager.OpenSettings()));
         menu.Items.Add(new Separator());
         menu.Items.Add(MenuItem("Show all", () => _windowManager.ShowAll()));
         menu.Items.Add(MenuItem("Hide all", () => _windowManager.HideAll()));
@@ -88,6 +89,11 @@ public sealed class TrayService : ITrayService
         {
             try { await _backupService.ImportInteractiveAsync(); }
             catch (Exception ex) { _logger.LogError(ex, "Import failed"); }
+        }));
+        menu.Items.Add(MenuItem("Export notes as text…", async () =>
+        {
+            try { await _backupService.ExportNotesAsTextAsync(); }
+            catch (Exception ex) { _logger.LogError(ex, "Text export failed"); }
         }));
 
         menu.Items.Add(new Separator());

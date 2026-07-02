@@ -20,6 +20,7 @@ public sealed class WindowManager : IWindowManager
     private readonly ILogger<WindowManager> _logger;
     private readonly List<NoteWindow> _windows = new();
     private NotesListWindow? _notesListWindow;
+    private SettingsWindow? _settingsWindow;
 
     public WindowManager(INoteRepository repository, IServiceProvider services, ILoggerFactory loggerFactory)
     {
@@ -105,6 +106,20 @@ public sealed class WindowManager : IWindowManager
             _notesListWindow = new NotesListWindow(vm);
         }
         _ = _notesListWindow.ShowAndReloadAsync();
+    }
+
+    public void OpenSettings()
+    {
+        if (_settingsWindow is not null)
+        {
+            _settingsWindow.Activate();
+            return;
+        }
+        var vm = _services.GetRequiredService<SettingsViewModel>();
+        _settingsWindow = new SettingsWindow(vm);
+        _settingsWindow.Closed += (_, _) => _settingsWindow = null;
+        _settingsWindow.Show();
+        _settingsWindow.Activate();
     }
 
     public bool FocusNoteByTitle(string title)

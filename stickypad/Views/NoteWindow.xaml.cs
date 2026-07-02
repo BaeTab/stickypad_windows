@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -491,14 +492,27 @@ public partial class NoteWindow : Window
     private void DecorateRun(Run run)
     {
         var text = run.Text;
-        var matches = TextExtraction.FindLinks(text).ToList();
-        if (matches.Count == 0) return;
+
+        // Collect both `[[wiki]]` links and bare http(s) URLs, then wrap each once.
+        var decorations = new List<(int Index, int Length, Uri Uri, string Tooltip, string Expected)>();
+        foreach (var (index, length, title) in TextExtraction.FindLinks(text))
+        {
+            decorations.Add((index, length,
+                new Uri($"stickypad://note/{Uri.EscapeDataString(title)}", UriKind.Absolute),
+                $"Open '{title}'", $"[[{title}]]"));
+        }
+        foreach (var (index, length, url) in TextExtraction.FindUrls(text))
+        {
+            if (Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            {
+                decorations.Add((index, length, uri, url, url));
+            }
+        }
+        if (decorations.Count == 0) return;
 
         // Replace from the back to keep earlier offsets stable.
-        for (var i = matches.Count - 1; i >= 0; i--)
+        foreach (var (index, length, uri, tooltip, expected) in decorations.OrderByDescending(d => d.Index))
         {
-            var (index, length, title) = matches[i];
-
             try
             {
                 var startPtr = run.ContentStart.GetPositionAtOffset(index);
@@ -506,12 +520,12 @@ public partial class NoteWindow : Window
                 if (startPtr is null || endPtr is null) continue;
 
                 var range = new TextRange(startPtr, endPtr);
-                if (range.Text != $"[[{title}]]") continue;
+                if (range.Text != expected) continue;
 
                 var hyperlink = new Hyperlink(range.Start, range.End)
                 {
-                    NavigateUri = new Uri($"stickypad://note/{Uri.EscapeDataString(title)}", UriKind.Absolute),
-                    ToolTip = $"Open '{title}'",
+                    NavigateUri = uri,
+                    ToolTip = tooltip,
                 };
                 hyperlink.RequestNavigate += OnLinkRequestNavigate;
             }
@@ -525,6 +539,22 @@ public partial class NoteWindow : Window
     private void OnLinkRequestNavigate(object sender, RequestNavigateEventArgs e)
     {
         e.Handled = true;
+
+        if (e.Uri.Scheme is "http" or "https")
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo(e.Uri.AbsoluteUri) { UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, $"Couldn't open the link:\n{ex.Message}", "StickyPad",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+            return;
+        }
+
+        // Otherwise it's a stickypad://note/{title} wiki link.
         var title = Uri.UnescapeDataString(e.Uri.AbsolutePath.TrimStart('/'));
         if (!_onLinkActivated(title))
         {

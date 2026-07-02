@@ -1,5 +1,7 @@
 using System;
 using System.IO;
+using System.Linq;
+using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows;
@@ -39,6 +41,53 @@ public sealed class BackupService : IBackupService
         await using var stream = File.Create(dlg.FileName);
         await JsonSerializer.SerializeAsync(stream, payload, JsonOptions).ConfigureAwait(true);
         _logger.LogInformation("Exported {Count} notes to {Path}", notes.Count, dlg.FileName);
+    }
+
+    public async Task ExportNotesAsTextAsync()
+    {
+        var dlg = new SaveFileDialog
+        {
+            Filter = "Markdown (*.md)|*.md|Text file (*.txt)|*.txt",
+            FileName = $"stickypad-notes-{DateTime.Now:yyyyMMdd-HHmmss}.md",
+            Title = "Export notes as text",
+        };
+        if (dlg.ShowDialog() != true) return;
+
+        var notes = await _repository.GetAllAsync().ConfigureAwait(true);
+        var sb = new StringBuilder();
+        sb.AppendLine("# StickyPad notes");
+        sb.AppendLine($"_Exported {DateTime.Now:yyyy-MM-dd HH:mm} · {notes.Count} note(s)_");
+        sb.AppendLine();
+
+        foreach (var note in notes)
+        {
+            var title = string.IsNullOrWhiteSpace(note.Title) ? "(untitled)" : note.Title;
+            sb.AppendLine("---");
+            sb.AppendLine();
+            sb.AppendLine($"## {title}");
+            sb.AppendLine();
+
+            var body = (note.PlainText ?? string.Empty).Replace("\r\n", "\n").TrimEnd();
+            // PlainText's first line is the derived title — drop it so the title isn't printed twice.
+            var lines = body.Split('\n');
+            if (lines.Length > 0 && lines[0].Trim() == title)
+            {
+                body = string.Join("\n", lines.Skip(1)).Trim('\n');
+            }
+            sb.AppendLine(body.Length == 0 ? "_(empty)_" : body);
+            sb.AppendLine();
+
+            if (note.Tags is { Count: > 0 })
+            {
+                sb.AppendLine("Tags: " + string.Join(" ", note.Tags.Select(t => "#" + t)));
+                sb.AppendLine();
+            }
+            sb.AppendLine($"<sub>Modified {note.ModifiedAt.ToLocalTime():yyyy-MM-dd HH:mm}</sub>");
+            sb.AppendLine();
+        }
+
+        await File.WriteAllTextAsync(dlg.FileName, sb.ToString()).ConfigureAwait(true);
+        _logger.LogInformation("Exported {Count} notes as text to {Path}", notes.Count, dlg.FileName);
     }
 
     public async Task ImportInteractiveAsync()

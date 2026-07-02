@@ -13,6 +13,7 @@ public interface IWindowManager
     void HideAll();
     void ToggleAllVisible();
     void OpenNotesList();
+    void OpenSettings();
     bool FocusNoteByTitle(string title);
     bool FocusNoteById(Guid id);
 }

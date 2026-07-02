@@ -17,6 +17,7 @@ public sealed partial class NotesListViewModel : ObservableObject
 {
     private readonly INoteRepository _repository;
     private readonly IWindowManager _windowManager;
+    private readonly IBackupService _backupService;
     private readonly ILogger<NotesListViewModel> _logger;
     private readonly List<Note> _activeRaw = new();
     private readonly List<Note> _trashedRaw = new();
@@ -51,10 +52,11 @@ public sealed partial class NotesListViewModel : ObservableObject
             ? "아직 노트가 없습니다. 새 노트를 만들어 보세요."
             : "검색·필터에 일치하는 노트가 없습니다.");
 
-    public NotesListViewModel(INoteRepository repository, IWindowManager windowManager, ILogger<NotesListViewModel> logger)
+    public NotesListViewModel(INoteRepository repository, IWindowManager windowManager, IBackupService backupService, ILogger<NotesListViewModel> logger)
     {
         _repository = repository;
         _windowManager = windowManager;
+        _backupService = backupService;
         _logger = logger;
     }
 
@@ -215,6 +217,13 @@ public sealed partial class NotesListViewModel : ObservableObject
 
     [RelayCommand]
     private void NewNote() => _windowManager.CreateAndShowNew();
+
+    [RelayCommand]
+    private async Task ExportTextAsync()
+    {
+        try { await _backupService.ExportNotesAsTextAsync().ConfigureAwait(true); }
+        catch (Exception ex) { _logger.LogError(ex, "Failed to export notes as text"); }
+    }
 
     [RelayCommand]
     private void ClearTag() => ActiveTag = null;

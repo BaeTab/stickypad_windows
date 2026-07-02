@@ -14,6 +14,7 @@ public static class TextExtraction
     private const int TitleMaxLength = 80;
     private static readonly Regex TagPattern = new(@"(?<![\w])#([\p{L}\p{N}_\-]{1,32})", RegexOptions.Compiled);
     private static readonly Regex LinkPattern = new(@"\[\[([^\[\]\r\n]{1,200})\]\]", RegexOptions.Compiled);
+    private static readonly Regex UrlPattern = new(@"\bhttps?://[^\s\[\]<>""']+", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     public static string ToPlainText(string content, NoteContentFormat format)
     {
@@ -66,6 +67,18 @@ public static class TextExtraction
         foreach (Match match in LinkPattern.Matches(plainText))
         {
             yield return (match.Index, match.Length, match.Groups[1].Value.Trim());
+        }
+    }
+
+    public static IEnumerable<(int Index, int Length, string Url)> FindUrls(string plainText)
+    {
+        if (string.IsNullOrEmpty(plainText)) yield break;
+        foreach (Match match in UrlPattern.Matches(plainText))
+        {
+            // Drop trailing punctuation that is almost never part of the URL.
+            var url = match.Value.TrimEnd('.', ',', ')', ']', '}', '!', '?', ';', ':', '"', '\'');
+            if (url.Length == 0) continue;
+            yield return (match.Index, url.Length, url);
         }
     }
 

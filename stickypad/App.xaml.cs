@@ -89,6 +89,7 @@ public partial class App : Application
                 services.AddSingleton<IBackupService, BackupService>();
                 services.AddSingleton<ITrayService, TrayService>();
                 services.AddTransient<NotesListViewModel>();
+                services.AddTransient<SettingsViewModel>();
             })
             .Build();
 
@@ -115,13 +116,11 @@ public partial class App : Application
             _host.Services.GetRequiredService<ITrayService>().Initialize();
 
             var settings = _host.Services.GetRequiredService<ISettingsService>().Current;
-            if (settings.GlobalHotkeysEnabled)
-            {
-                var hotkeys = _host.Services.GetRequiredService<IHotkeyService>();
-                hotkeys.Register(
-                    newNoteHandler: () => manager.CreateAndShowNew(),
-                    openNotesListHandler: manager.OpenNotesList);
-            }
+            var hotkeys = _host.Services.GetRequiredService<IHotkeyService>();
+            hotkeys.Configure(
+                newNoteHandler: () => manager.CreateAndShowNew(),
+                openNotesListHandler: manager.OpenNotesList);
+            hotkeys.Apply(settings.GlobalHotkeysEnabled, settings.NewNoteHotkey, settings.NotesListHotkey);
         }
         catch (Exception ex)
         {

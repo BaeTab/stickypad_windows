@@ -65,11 +65,18 @@
                 VerticalAlignment="Center"
                 Foreground="#666"
                 Text="{Binding TotalCount, StringFormat={}{0} total}" />
-            <Button
-                Padding="12,4"
-                HorizontalAlignment="Right"
-                Command="{Binding NewNoteCommand}"
-                Content="+ New note" />
+            <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
+                <Button
+                    Margin="0,0,6,0"
+                    Padding="10,4"
+                    Command="{Binding ExportTextCommand}"
+                    Content="내보내기"
+                    ToolTip="메모를 마크다운/텍스트 파일로 내보내기" />
+                <Button
+                    Padding="12,4"
+                    Command="{Binding NewNoteCommand}"
+                    Content="+ New note" />
+            </StackPanel>
         </DockPanel>
 
         <StackPanel Grid.Row="1" Margin="0,12,0,0" Orientation="Horizontal">

@@ -62,6 +62,7 @@ StickyPad lives in your system tray and puts a note on your desktop in a single 
 - **`#tags`** are parsed live from the note body; the **All notes** window shows a tag sidebar with counts and one‑click filtering.
 - **Search** across title, tags, and body with scored ranking and inline highlighting of matches.
 - **`[[Wiki links]]`** resolve by note title — clicking opens (or focuses) the target note; missing targets are reported.
+- **Auto‑linked URLs** — `http(s)://…` addresses become clickable and open in your browser.
 
 ### Window behavior
 - Move, resize (grip), and recolor each note; position/size/color/opacity persist per note.
@@ -71,18 +72,20 @@ StickyPad lives in your system tray and puts a note on your desktop in a single 
 
 ### System integration
 - **System‑tray icon:** left‑click toggles show/hide‑all, double‑click makes a new note, right‑click opens the menu.
-- **Global hotkeys:** new note and All‑notes list from anywhere (can be disabled).
+- **Settings window** — toggle auto‑start, enable/disable global hotkeys, and **rebind the hotkeys** with a click‑and‑press capture field.
+- **Global hotkeys:** new note and All‑notes list from anywhere, fully configurable (or disabled).
 - **Start with Windows** — optional auto‑start via the current‑user `Run` registry key.
 - **Single instance** — launching again just surfaces the running app.
 
 ### Data & backup
 - **Backup export/import** to a portable JSON file (tray menu).
+- **Export notes as text** — dump all active notes to a readable Markdown/`.txt` file (tray menu or the All‑notes window's *내보내기* button).
 - **Recycle Bin** — deleted notes are soft‑deleted, restorable, and permanently purged after 30 days (a cleanup also runs at startup).
 - **Rolling logs** kept for 7 days for troubleshooting.
 
 ## Keyboard shortcuts
 
-**Global (system‑wide):**
+**Global (system‑wide)** — defaults; rebind them in **Settings**:
 
 | Shortcut | Action |
 | --- | --- |
@@ -194,14 +197,13 @@ StickyPad is **local‑first and offline**. There is no account, no network call
 
 Ideas under consideration (contributions welcome):
 - Markdown rendering in preview mode
-- Rich‑text backup (currently JSON with note content)
-- Customizable global hotkeys from a settings UI
-- Note pinning/grouping and reminders
+- Image paste / attachments
+- Note grouping and reminders
+- Cloud sync (optional)
 
 ## License
 
-To be determined. Until a license file is added, all rights are reserved by the author.
-If you'd like to reuse this code, please open an issue.
+Released under the [MIT License](LICENSE) © 2026 BaeTab. You're free to use, modify, and distribute it — see the LICENSE file for details.
 
 ## Acknowledgements
 
