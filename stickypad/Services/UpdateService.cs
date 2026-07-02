@@ -152,7 +152,7 @@ public sealed class UpdateService : IUpdateService
         Assembly.GetExecutingAssembly().GetName().Version ?? new Version(0, 0, 0);
 
     /// Compares two versions on Major.Minor.Build only (ignores the revision field).
-    private static int Compare(Version a, Version b)
+    internal static int Compare(Version a, Version b)
     {
         if (a.Major != b.Major) return a.Major.CompareTo(b.Major);
         var an = Math.Max(0, a.Minor); var bn = Math.Max(0, b.Minor);
@@ -160,7 +160,7 @@ public sealed class UpdateService : IUpdateService
         return Math.Max(0, a.Build).CompareTo(Math.Max(0, b.Build));
     }
 
-    private static ReleaseInfo? ParseRelease(string json)
+    internal static ReleaseInfo? ParseRelease(string json)
     {
         using var doc = JsonDocument.Parse(json);
         var root = doc.RootElement;
@@ -184,7 +184,7 @@ public sealed class UpdateService : IUpdateService
         return new ReleaseInfo(tag, version, url);
     }
 
-    private static Version? ParseVersion(string tag)
+    internal static Version? ParseVersion(string tag)
     {
         var t = tag.TrimStart('v', 'V').Trim();
         return Version.TryParse(t, out var v) ? v : null;
@@ -199,5 +199,5 @@ public sealed class UpdateService : IUpdateService
             MessageBox.Show(message, "StickyPad 업데이트", MessageBoxButton.OKCancel, MessageBoxImage.Question)
             == MessageBoxResult.OK);
 
-    private sealed record ReleaseInfo(string Tag, Version? Version, string? DownloadUrl);
+    internal sealed record ReleaseInfo(string Tag, Version? Version, string? DownloadUrl);
 }

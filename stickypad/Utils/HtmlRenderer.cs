@@ -30,6 +30,10 @@ public static class HtmlRenderer
         var accent = Hex(theme.Header);
         return
             "<!DOCTYPE html><html><head><meta charset=\"utf-8\">" +
+            // Defense-in-depth: no scripts/objects/frames; allow only inline styles and data/https images & fonts.
+            "<meta http-equiv=\"Content-Security-Policy\" content=\"" +
+            "default-src 'none'; img-src data: https: http:; media-src data: https: http:; " +
+            "style-src 'unsafe-inline'; font-src data: https:;\">" +
             "<meta name=\"color-scheme\" content=\"light dark\">" +
             "<style>" +
             $"html,body{{margin:0;padding:10px 12px;background:{bg};color:{fg};" +

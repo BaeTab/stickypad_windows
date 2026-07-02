@@ -426,8 +426,14 @@
             </Border>
 
             <Grid Grid.Row="2">
+                <Grid.RowDefinitions>
+                    <RowDefinition x:Name="EditorRow" Height="*" />
+                    <RowDefinition x:Name="SplitterRow" Height="0" />
+                    <RowDefinition x:Name="PreviewRow" Height="0" />
+                </Grid.RowDefinitions>
             <RichTextBox
                 x:Name="Editor"
+                Grid.Row="0"
                 Margin="10,8,10,12"
                 AcceptsTab="True"
                 AutoWordSelection="True"
@@ -449,8 +455,18 @@
                 </RichTextBox.Resources>
             </RichTextBox>
 
+            <GridSplitter
+                x:Name="PreviewSplitter"
+                Grid.Row="1"
+                Height="5"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Center"
+                Background="#22000000"
+                Visibility="Collapsed" />
+
             <wv2:WebView2
                 x:Name="Preview"
+                Grid.Row="2"
                 Margin="8,4,8,10"
                 DefaultBackgroundColor="Transparent"
                 Visibility="Collapsed" />

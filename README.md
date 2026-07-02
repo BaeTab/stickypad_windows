@@ -160,10 +160,10 @@ Each note can be plain **Text**, **Markdown**, or **HTML**. Pick the mode from t
 
 **Steps to render:**
 1. Click **`M`** (Markdown) or **`</>`** (HTML) to switch the note's mode.
-2. Type or paste your source — this is the **edit view**, so you'll see the raw Markdown/HTML text (that's expected).
-3. Click the **`👁` (Eye)** button, or press **`Ctrl+E`**, to switch to the **rendered preview**.
+2. The note becomes a **live split** — **source on top, rendered preview below** — and the preview updates as you type. Drag the divider to resize.
+3. Press **`👁` (Eye)** or **`Ctrl+E`** to expand to a **full‑screen rendered view**, and again to return to the split.
 
-Press **`Ctrl+E`** any time to flip between source and rendered. When you **reopen** a Markdown/HTML note later, it opens **already rendered**.
+When you **reopen** a Markdown/HTML note later, it opens in the same live split.
 
 - Links in a rendered note open in your **default browser**.
 - The preview is themed to match the note's color.

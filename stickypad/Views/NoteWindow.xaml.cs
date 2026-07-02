@@ -12,6 +12,7 @@ using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Navigation;
+using System.Windows.Threading;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
 using StickyPad.Models;
@@ -38,6 +39,7 @@ public partial class NoteWindow : Window
     private bool _suppressEditorSync;
     private bool _suppressToolbarSync;
     private bool _allowClose;
+    private readonly DispatcherTimer _previewTimer;
 
     public NoteViewModel ViewModel => _viewModel;
     public IReadOnlyList<double> FontSizeChoices => NoteViewModel.FontSizeCatalog;
@@ -105,6 +107,14 @@ public partial class NoteWindow : Window
         // In Markdown/HTML mode the editor is a plain source view — force paste to plain text
         // so pasted tags/markup are kept literally instead of being converted to rich text.
         DataObject.AddPastingHandler(Editor, OnEditorPasting);
+
+        // Debounced live re-render for the split preview.
+        _previewTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(350) };
+        _previewTimer.Tick += (_, _) =>
+        {
+            _previewTimer.Stop();
+            if (IsMarkup && Preview.Visibility == Visibility.Visible) RenderPreview();
+        };
     }
 
     private void OnEditorPasting(object sender, DataObjectPastingEventArgs e)
@@ -137,8 +147,7 @@ public partial class NoteWindow : Window
         LoadEditorContent();
         if (!IsMarkup) DecorateLinks();
         SyncModeButtons();
-        // Markup notes that already have content open rendered — "auto render".
-        if (IsMarkup && !_viewModel.IsEmpty) _viewModel.IsPreviewMode = true;
+        // Markup notes open in split view (editor + live preview) so they render immediately.
         UpdateToolbarVisibility();
         UpdateContentView();
         SyncToolbarFromSelection();
@@ -193,6 +202,11 @@ public partial class NoteWindow : Window
         if (IsMarkup)
         {
             _viewModel.UpdateContent(GetEditorPlainText(), _viewModel.Format);
+            if (Preview.Visibility == Visibility.Visible)
+            {
+                _previewTimer.Stop();
+                _previewTimer.Start(); // debounce the live split re-render
+            }
             return;
         }
 
@@ -364,10 +378,42 @@ public partial class NoteWindow : Window
 
     private void UpdateContentView()
     {
-        var showPreview = IsMarkup && _viewModel.IsPreviewMode;
-        Preview.Visibility = showPreview ? Visibility.Visible : Visibility.Collapsed;
-        Editor.Visibility = showPreview ? Visibility.Collapsed : Visibility.Visible;
-        if (showPreview) RenderPreview();
+        if (!IsMarkup)
+        {
+            // Rich note: editor fills the area, no preview.
+            Editor.Visibility = Visibility.Visible;
+            PreviewSplitter.Visibility = Visibility.Collapsed;
+            Preview.Visibility = Visibility.Collapsed;
+            EditorRow.Height = new GridLength(1, GridUnitType.Star);
+            SplitterRow.Height = new GridLength(0);
+            PreviewRow.Height = new GridLength(0);
+            return;
+        }
+
+        if (_viewModel.IsPreviewMode)
+        {
+            // Full rendered preview (Ctrl+E / Eye toggled on).
+            Editor.Visibility = Visibility.Collapsed;
+            PreviewSplitter.Visibility = Visibility.Collapsed;
+            Preview.Visibility = Visibility.Visible;
+            EditorRow.Height = new GridLength(0);
+            SplitterRow.Height = new GridLength(0);
+            PreviewRow.Height = new GridLength(1, GridUnitType.Star);
+        }
+        else
+        {
+            // Split: editor on top, live-rendered preview below.
+            Editor.Visibility = Visibility.Visible;
+            PreviewSplitter.Visibility = Visibility.Visible;
+            Preview.Visibility = Visibility.Visible;
+            if (EditorRow.Height.Value <= 0 || PreviewRow.Height.Value <= 0)
+            {
+                EditorRow.Height = new GridLength(1, GridUnitType.Star);
+                PreviewRow.Height = new GridLength(1, GridUnitType.Star);
+            }
+            SplitterRow.Height = GridLength.Auto;
+        }
+        RenderPreview();
     }
 
     private async void RenderPreview()
@@ -401,6 +447,10 @@ public partial class NoteWindow : Window
         await Preview.EnsureCoreWebView2Async().ConfigureAwait(true);
 
         var core = Preview.CoreWebView2;
+        // Notes never need scripting — block it so pasted/embedded HTML can't run code.
+        core.Settings.IsScriptEnabled = false;
+        core.Settings.AreHostObjectsAllowed = false;
+        core.Settings.IsWebMessageEnabled = false;
         core.Settings.AreDevToolsEnabled = false;
         core.Settings.AreDefaultContextMenusEnabled = false;
         core.Settings.IsStatusBarEnabled = false;
