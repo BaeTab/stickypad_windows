@@ -12,6 +12,8 @@ using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Navigation;
+using Microsoft.Web.WebView2.Core;
+using Microsoft.Web.WebView2.Wpf;
 using StickyPad.Models;
 using StickyPad.Services;
 using StickyPad.Utils;
@@ -82,6 +84,11 @@ public partial class NoteWindow : Window
             if (args.PropertyName == nameof(NoteViewModel.IsPreviewMode))
             {
                 UpdateToolbarVisibility();
+                UpdateContentView();
+            }
+            else if (args.PropertyName == nameof(NoteViewModel.Color) && IsMarkup && _viewModel.IsPreviewMode)
+            {
+                RenderPreview();
             }
         };
 
@@ -105,8 +112,12 @@ public partial class NoteWindow : Window
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         LoadEditorContent();
-        DecorateLinks();
+        if (!IsMarkup) DecorateLinks();
+        SyncModeButtons();
+        // Markup notes that already have content open rendered — "auto render".
+        if (IsMarkup && !_viewModel.IsEmpty) _viewModel.IsPreviewMode = true;
         UpdateToolbarVisibility();
+        UpdateContentView();
         SyncToolbarFromSelection();
         Editor.Focus();
     }
@@ -138,8 +149,12 @@ public partial class NoteWindow : Window
                 }
             }
 
+            // Plain-text / Markdown / HTML source: one paragraph per line.
             Editor.Document.Blocks.Clear();
-            Editor.Document.Blocks.Add(new Paragraph(new Run(_viewModel.Content)));
+            foreach (var line in _viewModel.Content.Replace("\r\n", "\n").Split('\n'))
+            {
+                Editor.Document.Blocks.Add(new Paragraph(new Run(line)));
+            }
         }
         finally
         {
@@ -150,6 +165,13 @@ public partial class NoteWindow : Window
     private void Editor_OnTextChanged(object sender, TextChangedEventArgs e)
     {
         if (_suppressEditorSync) return;
+
+        // Markdown/HTML notes store the raw source as plain text (rendered on preview).
+        if (IsMarkup)
+        {
+            _viewModel.UpdateContent(GetEditorPlainText(), _viewModel.Format);
+            return;
+        }
 
         // Re-wrap freshly-typed [[Title]] tokens as Hyperlinks before serializing — keeps the persisted
         // XAML self-contained so links work after a restart.
@@ -240,7 +262,148 @@ public partial class NoteWindow : Window
 
     private void UpdateToolbarVisibility()
     {
-        IsToolbarVisible = (IsActive || IsMouseOver) && !_viewModel.IsPreviewMode;
+        // The rich-text format bar only applies to rich notes, and never in preview.
+        IsToolbarVisible = (IsActive || IsMouseOver) && !_viewModel.IsPreviewMode && !IsMarkup;
+    }
+
+    private bool IsMarkup =>
+        _viewModel.Format is NoteContentFormat.Markdown or NoteContentFormat.Html;
+
+    private string GetEditorPlainText() =>
+        new TextRange(Editor.Document.ContentStart, Editor.Document.ContentEnd).Text.TrimEnd('\r', '\n');
+
+    private void ModeToggle_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.Primitives.ToggleButton { Tag: string tag }) return;
+        var target = tag switch
+        {
+            "Markdown" => NoteContentFormat.Markdown,
+            "Html" => NoteContentFormat.Html,
+            _ => NoteContentFormat.RichTextXaml,
+        };
+        SetMode(target);
+    }
+
+    private void SetMode(NoteContentFormat target)
+    {
+        var targetIsMarkup = target is NoteContentFormat.Markdown or NoteContentFormat.Html;
+        // Treat PlainText and RichTextXaml as the same "rich" bucket.
+        if (target == _viewModel.Format || (!IsMarkup && !targetIsMarkup))
+        {
+            SyncModeButtons();
+            return;
+        }
+
+        // Carry the current text across the switch (rich formatting is dropped when leaving rich mode).
+        var text = GetEditorPlainText();
+
+        _suppressEditorSync = true;
+        try
+        {
+            if (targetIsMarkup)
+            {
+                _viewModel.UpdateContent(text, target);   // Content = raw source
+                LoadEditorContent();
+            }
+            else
+            {
+                _viewModel.Format = NoteContentFormat.RichTextXaml;
+                Editor.Document.Blocks.Clear();
+                foreach (var line in text.Replace("\r\n", "\n").Split('\n'))
+                {
+                    Editor.Document.Blocks.Add(new Paragraph(new Run(line)));
+                }
+            }
+        }
+        finally
+        {
+            _suppressEditorSync = false;
+        }
+
+        if (!targetIsMarkup)
+        {
+            _viewModel.IsPreviewMode = false;
+            Editor_OnTextChanged(Editor, null!);   // persist the new XAML
+        }
+
+        SyncModeButtons();
+        UpdateToolbarVisibility();
+        UpdateContentView();
+        if (!_viewModel.IsPreviewMode) Editor.Focus();
+    }
+
+    private void SyncModeButtons()
+    {
+        ModeTextToggle.IsChecked = !IsMarkup;
+        ModeMarkdownToggle.IsChecked = _viewModel.Format == NoteContentFormat.Markdown;
+        ModeHtmlToggle.IsChecked = _viewModel.Format == NoteContentFormat.Html;
+    }
+
+    private void UpdateContentView()
+    {
+        var showPreview = IsMarkup && _viewModel.IsPreviewMode;
+        Preview.Visibility = showPreview ? Visibility.Visible : Visibility.Collapsed;
+        Editor.Visibility = showPreview ? Visibility.Collapsed : Visibility.Visible;
+        if (showPreview) RenderPreview();
+    }
+
+    private async void RenderPreview()
+    {
+        try
+        {
+            var html = HtmlRenderer.Render(GetEditorPlainText(), _viewModel.Format, _viewModel.Theme);
+            await EnsureWebViewAsync().ConfigureAwait(true);
+            Preview.NavigateToString(html);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this,
+                "미리보기를 표시할 수 없습니다. WebView2 런타임이 필요할 수 있습니다.\n\n" + ex.Message,
+                "StickyPad", MessageBoxButton.OK, MessageBoxImage.Warning);
+            _viewModel.IsPreviewMode = false;
+        }
+    }
+
+    private bool _webViewReady;
+
+    private async Task EnsureWebViewAsync()
+    {
+        if (_webViewReady) return;
+
+        var udf = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "StickyPad", "WebView2");
+        Directory.CreateDirectory(udf);
+        Preview.CreationProperties = new CoreWebView2CreationProperties { UserDataFolder = udf };
+        await Preview.EnsureCoreWebView2Async().ConfigureAwait(true);
+
+        var core = Preview.CoreWebView2;
+        core.Settings.AreDevToolsEnabled = false;
+        core.Settings.AreDefaultContextMenusEnabled = false;
+        core.Settings.IsStatusBarEnabled = false;
+        core.Settings.AreBrowserAcceleratorKeysEnabled = false;
+
+        // Real links open in the user's browser instead of navigating inside the note.
+        core.NavigationStarting += (_, e) =>
+        {
+            if (e.IsUserInitiated && (e.Uri.StartsWith("http://") || e.Uri.StartsWith("https://")))
+            {
+                e.Cancel = true;
+                OpenExternal(e.Uri);
+            }
+        };
+        core.NewWindowRequested += (_, e) =>
+        {
+            e.Handled = true;
+            OpenExternal(e.Uri);
+        };
+        _webViewReady = true;
+    }
+
+    private static void OpenExternal(string uri)
+    {
+        try { Process.Start(new ProcessStartInfo(uri) { UseShellExecute = true }); }
+        catch { /* ignore */ }
     }
 
     private async void OnClosing(object? sender, CancelEventArgs e)

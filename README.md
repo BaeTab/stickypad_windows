@@ -34,6 +34,7 @@ StickyPad lives in your system tray and puts a note on your desktop in a single 
 - ⚡ **Instant capture** — `Ctrl+Shift+N` drops a new note anywhere, even when no window is focused.
 - 🎨 **Six color themes** — Yellow, Pink, Blue, Green, Purple, and a dark Gray.
 - ✍️ **Rich text** — bold, italic, underline, strikethrough, lists, task checkboxes, inline code, code blocks, alignment, and per‑selection font sizes.
+- 🧩 **Renders Markdown & HTML** — flip a note to Markdown or HTML mode and it renders live (via WebView2).
 - 🏷️ **Tags & search** — type `#tag` inside a note; filter and full‑text search from the **All notes** window with match highlighting.
 - 🔗 **Wiki links** — write `[[Note title]]` to link notes together; click to jump.
 - 🗑️ **Safe deletes** — a Recycle Bin keeps deleted notes for 30 days before auto‑purging.
@@ -41,6 +42,11 @@ StickyPad lives in your system tray and puts a note on your desktop in a single 
 - 💾 **Local‑first** — an embedded LiteDB file on your machine, with one‑click JSON backup export/import.
 
 ## Screenshots
+
+### Live rendering — Text · Markdown · HTML
+Switch a note between **Text / Markdown / HTML** and it renders on the spot:
+
+![Text, Markdown and HTML rendering](docs/images/render-demo.gif)
 
 | Desktop notes | All notes (search • tags • trash) | In‑note editor |
 | :---: | :---: | :---: |
@@ -52,6 +58,7 @@ StickyPad lives in your system tray and puts a note on your desktop in a single 
 
 ### Notes & editing
 - Rich‑text editor (WPF `RichTextBox`) with a toolbar that appears on hover/focus and hides in preview mode.
+- **Text / Markdown / HTML modes** — pick a mode per note from the header (T / M / &lt;/&gt;). Markdown (rendered with [Markdig](https://github.com/xoofx/markdig)) and raw HTML render in a themed **WebView2** preview; `Ctrl+E` toggles source ⇄ rendered, and links open in your browser.
 - **Formatting:** bold, italic, underline, strikethrough, bulleted & numbered lists, left/center/right alignment, inline code and code blocks, and a per‑selection font‑size picker.
 - **Task checkboxes** — insert inline `☐` items you can tick right inside the note.
 - **Preview / Edit toggle** (`Ctrl+E`) locks a note read‑only so you can't fumble the text while reading it.
@@ -109,7 +116,7 @@ StickyPad lives in your system tray and puts a note on your desktop in a single 
 ### Download
 Grab the latest build from the [**Releases**](https://github.com/BaeTab/stickypad_windows/releases) page, unzip, and run `StickyPad.exe`.
 
-Requires the **[.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0)** (x64) unless you use a self‑contained build (see below).
+Requires the **[.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0)** (x64) unless you use a self‑contained build (see below). The Markdown/HTML preview uses the **[WebView2 runtime](https://developer.microsoft.com/microsoft-edge/webview2/)** — preinstalled on Windows 11 (and most Windows 10).
 
 ### Build from source
 
@@ -168,6 +175,7 @@ A small, layered WPF application using the MVVM pattern and dependency injection
 - **MVVM:** [CommunityToolkit.Mvvm](https://github.com/CommunityToolkit/dotnet)
 - **Host & DI:** `Microsoft.Extensions.Hosting` / `DependencyInjection`
 - **Storage:** [LiteDB](https://www.litedb.org/) (embedded NoSQL)
+- **Rendering:** [Markdig](https://github.com/xoofx/markdig) (Markdown) + [WebView2](https://developer.microsoft.com/microsoft-edge/webview2/) (HTML preview)
 - **Logging:** [Serilog](https://serilog.net/) (file + debug sinks)
 - **Tray:** [H.NotifyIcon.Wpf](https://github.com/HavenDV/H.NotifyIcon)
 - **Hotkeys:** [NHotkey.Wpf](https://github.com/thomaslevesque/NHotkey)
@@ -197,7 +205,7 @@ StickyPad is **local‑first and offline**. There is no account, no network call
 ## Roadmap
 
 Ideas under consideration (contributions welcome):
-- Markdown rendering in preview mode
+- Live split preview (edit + rendered side by side)
 - Image paste / attachments
 - Note grouping and reminders
 - Cloud sync (optional)

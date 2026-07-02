@@ -4,6 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:m="clr-namespace:StickyPad.Models"
     xmlns:u="clr-namespace:StickyPad.Utils"
+    xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
     Title="Sticky"
     MinWidth="220"
     MinHeight="180"
@@ -209,6 +210,31 @@
 
                     <StackPanel Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center" Orientation="Horizontal">
                         <ToggleButton
+                            x:Name="ModeTextToggle"
+                            Click="ModeToggle_OnClick"
+                            Cursor="Hand"
+                            Style="{StaticResource FormatToggle}"
+                            Tag="Rich"
+                            ToolTip="Text (rich)"
+                            Content="T" />
+                        <ToggleButton
+                            x:Name="ModeMarkdownToggle"
+                            Click="ModeToggle_OnClick"
+                            Cursor="Hand"
+                            Style="{StaticResource FormatToggle}"
+                            Tag="Markdown"
+                            ToolTip="Markdown"
+                            Content="M" />
+                        <ToggleButton
+                            x:Name="ModeHtmlToggle"
+                            Click="ModeToggle_OnClick"
+                            Cursor="Hand"
+                            Style="{StaticResource FormatToggle}"
+                            Tag="Html"
+                            ToolTip="HTML"
+                            Content="&lt;/&gt;" />
+                        <Border Style="{StaticResource VerticalSeparator}" />
+                        <ToggleButton
                             Cursor="Hand"
                             IsChecked="{Binding IsPreviewMode}"
                             Style="{StaticResource FormatToggle}"
@@ -399,9 +425,9 @@
                 </DockPanel>
             </Border>
 
+            <Grid Grid.Row="2">
             <RichTextBox
                 x:Name="Editor"
-                Grid.Row="2"
                 Margin="10,8,10,12"
                 AcceptsTab="True"
                 AutoWordSelection="True"
@@ -422,6 +448,13 @@
                     </Style>
                 </RichTextBox.Resources>
             </RichTextBox>
+
+            <wv2:WebView2
+                x:Name="Preview"
+                Margin="8,4,8,10"
+                DefaultBackgroundColor="Transparent"
+                Visibility="Collapsed" />
+            </Grid>
         </Grid>
     </Border>
 </Window>

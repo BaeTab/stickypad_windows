@@ -19,20 +19,34 @@ public static class TextExtraction
     public static string ToPlainText(string content, NoteContentFormat format)
     {
         if (string.IsNullOrEmpty(content)) return string.Empty;
-        if (format != NoteContentFormat.RichTextXaml) return content;
 
-        try
+        switch (format)
         {
-            var doc = new FlowDocument();
-            var range = new TextRange(doc.ContentStart, doc.ContentEnd);
-            using var ms = new MemoryStream(Encoding.UTF8.GetBytes(content));
-            range.Load(ms, System.Windows.DataFormats.Xaml);
-            return range.Text ?? string.Empty;
-        }
-        catch
-        {
-            // Fall back to a tag-stripped projection if the XAML is malformed.
-            return Regex.Replace(content, "<[^>]+>", string.Empty);
+            case NoteContentFormat.Markdown:
+                // Strip Markdown markup so titles/tags/search index the readable text.
+                try { return Markdig.Markdown.ToPlainText(content); }
+                catch { return content; }
+
+            case NoteContentFormat.Html:
+                return Regex.Replace(content, "<[^>]+>", string.Empty);
+
+            case NoteContentFormat.RichTextXaml:
+                try
+                {
+                    var doc = new FlowDocument();
+                    var range = new TextRange(doc.ContentStart, doc.ContentEnd);
+                    using var ms = new MemoryStream(Encoding.UTF8.GetBytes(content));
+                    range.Load(ms, System.Windows.DataFormats.Xaml);
+                    return range.Text ?? string.Empty;
+                }
+                catch
+                {
+                    // Fall back to a tag-stripped projection if the XAML is malformed.
+                    return Regex.Replace(content, "<[^>]+>", string.Empty);
+                }
+
+            default:
+                return content;
         }
     }
 
