@@ -37,6 +37,7 @@ StickyPad lives in your system tray and puts a note on your desktop in a single 
 - 🧩 **Renders Markdown & HTML** — flip a note to Markdown or HTML mode and it renders live (via WebView2).
 - 🏷️ **Tags & search** — type `#tag` inside a note; filter and full‑text search from the **All notes** window with match highlighting.
 - 🔗 **Wiki links** — write `[[Note title]]` to link notes together; click to jump.
+- 📂 **Open & link `.md` files** — open a Markdown/text file from disk (double‑click, drag‑drop, or `Ctrl+O`) and StickyPad renders it in a note. Edits save straight back to the file, and external changes reload automatically — a two‑way link, not a copy.
 - 🗑️ **Safe deletes** — a Recycle Bin keeps deleted notes for 30 days before auto‑purging.
 - 🖥️ **Stays out of the way** — tray icon, per‑note opacity, always‑on‑top pin, multi‑monitor aware.
 - 💾 **Local‑first** — an embedded LiteDB file on your machine, with one‑click JSON backup export/import.
@@ -71,6 +72,12 @@ Switch a note between **Text / Markdown / HTML** and it renders on the spot:
 - **`[[Wiki links]]`** resolve by note title — clicking opens (or focuses) the target note; missing targets are reported.
 - **Auto‑linked URLs** — `http(s)://…` addresses become clickable and open in your browser.
 
+### Linked files (open `.md` from disk)
+- **Open a Markdown/text file** three ways: double‑click it (once StickyPad is set as its *Open with* app), **drag‑drop** it onto any note, or press **`Ctrl+O`** — it opens as a rendered note.
+- **Two‑way sync** — the note *is* the file: your edits are written back to the original `.md`, and if the file changes in another editor the note reloads automatically (with a conflict prompt if you had unsaved edits).
+- **Non‑destructive** — deleting/trashing a linked note only removes the note; the **original file is never deleted**. Re‑opening the same file reuses the existing note instead of duplicating it.
+- **Safe by design** — reading detects the file's encoding (BOM‑aware); writing is UTF‑8. The file path shows on the header hover tooltip.
+
 ### Window behavior
 - Move, resize (grip), and recolor each note; position/size/color/opacity persist per note.
 - **Per‑note opacity** (50–100%) and an **always‑on‑top** pin.
@@ -83,7 +90,8 @@ Switch a note between **Text / Markdown / HTML** and it renders on the spot:
 - **Global hotkeys:** new note and All‑notes list from anywhere, fully configurable (or disabled).
 - **Start with Windows** — optional auto‑start via the current‑user `Run` registry key.
 - **Automatic updates** — on launch (and from the tray's *Check for updates…*) StickyPad checks GitHub Releases and, with your OK, downloads the new build and self‑replaces on restart. Toggle it in Settings.
-- **Single instance** — launching again just surfaces the running app.
+- **Single instance** — launching again just surfaces the running app (and forwards any file passed on the command line to it, so double‑clicking an `.md` opens it in the running instance).
+- **`.md` file association** — StickyPad registers itself (per‑user, no admin) in the Windows *Open with* list for `.md`/`.markdown`, without hijacking your default editor.
 
 ### Data & backup
 - **Backup export/import** to a portable JSON file (tray menu).
@@ -108,6 +116,7 @@ Switch a note between **Text / Markdown / HTML** and it renders on the spot:
 | `Ctrl` + `Shift` + `X` | Strikethrough |
 | `` Ctrl + ` `` | Inline code |
 | `Ctrl` + `E` | Toggle Preview / Edit (read‑only lock) |
+| `Ctrl` + `O` | Open a Markdown/text file from disk (linked, two‑way) |
 
 > Alignment, lists, task items, code blocks, font size, color, opacity, and pin are available from the on‑hover toolbar.
 
@@ -170,6 +179,22 @@ When you **reopen** a Markdown/HTML note later, it opens in the same live split.
 - Rendering uses the **WebView2 runtime** (built into Windows 11 and most Windows 10).
 
 > **Pasting:** in Markdown/HTML mode, pasted content is inserted as **plain text automatically**, so your tags and markup are kept exactly as copied (even from a browser or Word).
+
+### Open & link a `.md` file from disk
+
+Point StickyPad at a Markdown/text file on your machine and it opens as a **rendered, live‑linked** note:
+
+- **Drag‑drop** the `.md` onto any note, **press `Ctrl+O`** / the 📂 header button, or use the tray menu → *Open markdown file…*
+- **Double‑click** from Explorer/desktop: right‑click the file → *Open with* → **StickyPad** (StickyPad registers itself in that list on first run; choose *Always* to make double‑click open it).
+
+Once open:
+
+1. The note shows the **rendered Markdown** first; press **`Ctrl+E`** / the 👁 button to edit the source.
+2. **Your edits are saved back to the original file** automatically (debounced) — the note and the file stay in sync.
+3. If the file is **changed by another program**, the note reloads it. If you had unsaved edits, StickyPad asks whether to keep yours or take the disk version.
+4. **Deleting the note keeps the file.** It only unlinks; your `.md` on disk is untouched.
+
+> The header's hover tooltip shows the linked file's full path. Supported: `.md`, `.markdown`, `.txt`, and similar text files.
 
 ## Where your data lives
 

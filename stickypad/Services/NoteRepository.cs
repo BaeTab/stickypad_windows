@@ -90,6 +90,24 @@ public sealed class NoteRepository : INoteRepository, IDisposable
         }
     }
 
+    public async Task<Note?> FindByLinkedPathAsync(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return null;
+        var target = path.Trim();
+        await _gate.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            var col = _db.GetCollection<Note>(CollectionName);
+            // 경로 비교는 클라이언트 측에서 대소문자 무시(Windows 파일시스템 관례)로 수행.
+            return col.Find(n => !n.IsDeleted && n.LinkedFilePath != null)
+                .FirstOrDefault(n => string.Equals(n.LinkedFilePath, target, StringComparison.OrdinalIgnoreCase));
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
     public async Task UpsertAsync(Note note)
     {
         await _gate.WaitAsync().ConfigureAwait(false);

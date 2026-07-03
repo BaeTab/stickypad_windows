@@ -8,10 +8,13 @@
     Title="Sticky"
     MinWidth="220"
     MinHeight="180"
+    AllowDrop="True"
     AllowsTransparency="True"
     Background="Transparent"
     FontFamily="Segoe UI"
     Opacity="{Binding Opacity}"
+    PreviewDragOver="Window_OnPreviewDragOver"
+    PreviewDrop="Window_OnPreviewDrop"
     ResizeMode="CanResizeWithGrip"
     ShowInTaskbar="False"
     SnapsToDevicePixels="True"
@@ -118,7 +121,8 @@
                 Height="30"
                 Background="{Binding HeaderBrush}"
                 CornerRadius="8,8,0,0"
-                MouseLeftButtonDown="HeaderBar_OnMouseLeftButtonDown">
+                MouseLeftButtonDown="HeaderBar_OnMouseLeftButtonDown"
+                ToolTip="{Binding LinkedFilePath}">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
@@ -246,6 +250,11 @@
                             Style="{StaticResource FormatToggle}"
                             ToolTip="Always on top"
                             Content="Pin" />
+                        <Button
+                            Click="OpenFileButton_OnClick"
+                            Style="{StaticResource ChromeButton}"
+                            ToolTip="Open .md / text file (Ctrl+O)"
+                            Content="📂" />
                         <Button
                             Click="NewButton_OnClick"
                             Style="{StaticResource ChromeButton}"

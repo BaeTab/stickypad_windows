@@ -15,6 +15,7 @@ using System.Windows.Navigation;
 using System.Windows.Threading;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
+using Microsoft.Win32;
 using StickyPad.Models;
 using StickyPad.Services;
 using StickyPad.Utils;
@@ -36,13 +37,22 @@ public partial class NoteWindow : Window
     private readonly Func<NoteWindow> _onNewRequested;
     private readonly Action _onListRequested;
     private readonly Func<string, bool> _onLinkActivated;
+    private readonly Func<string, Task> _onOpenFileRequested;
     private bool _suppressEditorSync;
     private bool _suppressToolbarSync;
     private bool _allowClose;
     private readonly DispatcherTimer _previewTimer;
 
+    // 연동 파일의 외부 변경 감시 — 감시자 콜백은 스레드풀에서 오므로 UI 스레드로 넘겨 디바운스한다.
+    private FileSystemWatcher? _fileWatcher;
+    private readonly DispatcherTimer _fileReloadTimer;
+    private bool _reloadPromptOpen;
+
     public NoteViewModel ViewModel => _viewModel;
     public IReadOnlyList<double> FontSizeChoices => NoteViewModel.FontSizeCatalog;
+
+    /// WindowManager 가 .md 파일을 열 때 true 로 설정 — 로드되면 렌더링된 미리보기로 먼저 보여준다.
+    public bool OpenInPreview { get; set; }
 
     public bool IsToolbarVisible
     {
@@ -55,7 +65,8 @@ public partial class NoteWindow : Window
         Action<NoteWindow> onHidden,
         Func<NoteWindow> onNewRequested,
         Action onListRequested,
-        Func<string, bool> onLinkActivated)
+        Func<string, bool> onLinkActivated,
+        Func<string, Task> onOpenFileRequested)
     {
         InitializeComponent();
         _viewModel = viewModel;
@@ -63,6 +74,7 @@ public partial class NoteWindow : Window
         _onNewRequested = onNewRequested;
         _onListRequested = onListRequested;
         _onLinkActivated = onLinkActivated;
+        _onOpenFileRequested = onOpenFileRequested;
 
         Icon = IconFactory.CreateAppIcon();
 
@@ -103,6 +115,9 @@ public partial class NoteWindow : Window
         InputBindings.Add(new KeyBinding(
             new RelayCommandImpl(_ => ToggleInlineCode()),
             new KeyGesture(Key.OemTilde, ModifierKeys.Control)));
+        InputBindings.Add(new KeyBinding(
+            new RelayCommandImpl(_ => OpenFileViaDialog()),
+            new KeyGesture(Key.O, ModifierKeys.Control)));
 
         // In Markdown/HTML mode the editor is a plain source view — force paste to plain text
         // so pasted tags/markup are kept literally instead of being converted to rich text.
@@ -115,6 +130,12 @@ public partial class NoteWindow : Window
             _previewTimer.Stop();
             if (IsMarkup && Preview.Visibility == Visibility.Visible) RenderPreview();
         };
+
+        // 연동 파일이 외부에서 바뀌면(에디터가 여러 이벤트를 쏟아내므로) 잠시 모아 한 번만 반영.
+        _fileReloadTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(400) };
+        _fileReloadTimer.Tick += (_, _) => { _fileReloadTimer.Stop(); _ = ReloadLinkedFileAsync(); };
+
+        Closed += (_, _) => DisposeFileWatcher();
     }
 
     private void OnEditorPasting(object sender, DataObjectPastingEventArgs e)
@@ -147,11 +168,17 @@ public partial class NoteWindow : Window
         LoadEditorContent();
         if (!IsMarkup) DecorateLinks();
         SyncModeButtons();
+        // .md 파일을 열었을 때는 렌더링된 미리보기로 먼저 보여준다(편집은 Ctrl+E / 눈 아이콘).
+        if (OpenInPreview && IsMarkup) _viewModel.IsPreviewMode = true;
         // Markup notes open in split view (editor + live preview) so they render immediately.
         UpdateToolbarVisibility();
         UpdateContentView();
         SyncToolbarFromSelection();
-        Editor.Focus();
+        StartFileWatcherIfLinked();
+        // 앱이 꺼져 있는 동안 파일이 바뀌었을 수 있으니 로드 직후 한 번 대조(로컬 편집이 없으므로
+        // 파일이 다르면 조용히 파일 내용으로 맞춘다 — 파일이 원본).
+        if (_viewModel.IsLinkedFile) _ = ReloadLinkedFileAsync();
+        if (!_viewModel.IsPreviewMode) Editor.Focus();
     }
 
     private void LoadEditorContent()
@@ -479,6 +506,161 @@ public partial class NoteWindow : Window
         catch { /* ignore */ }
     }
 
+    // ── 파일 열기(대화상자 / 드래그&드롭) ─────────────────────────────────────
+
+    private async void OpenFileViaDialog()
+    {
+        var dlg = new OpenFileDialog
+        {
+            Filter = LinkedFile.OpenDialogFilter,
+            Title = "Markdown / 텍스트 파일 열기",
+        };
+        if (dlg.ShowDialog(this) == true)
+        {
+            try { await _onOpenFileRequested(dlg.FileName); }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, "파일을 열 수 없습니다:\n" + ex.Message, "StickyPad",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+    }
+
+    private void OpenFileButton_OnClick(object sender, RoutedEventArgs e) => OpenFileViaDialog();
+
+    private void Window_OnPreviewDragOver(object sender, DragEventArgs e)
+    {
+        if (e.Data.GetDataPresent(DataFormats.FileDrop))
+        {
+            e.Effects = DragDropEffects.Copy;
+            e.Handled = true;
+        }
+    }
+
+    private async void Window_OnPreviewDrop(object sender, DragEventArgs e)
+    {
+        if (!e.Data.GetDataPresent(DataFormats.FileDrop)) return;
+        e.Handled = true;
+        if (e.Data.GetData(DataFormats.FileDrop) is not string[] files) return;
+
+        foreach (var file in files)
+        {
+            if (!LinkedFile.IsSupported(file)) continue;
+            try { await _onOpenFileRequested(file); }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, "파일을 열 수 없습니다:\n" + ex.Message, "StickyPad",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+    }
+
+    // ── 연동 파일 외부 변경 감시 ──────────────────────────────────────────────
+
+    private void StartFileWatcherIfLinked()
+    {
+        if (!_viewModel.IsLinkedFile) return;
+        var path = _viewModel.LinkedFilePath!;
+        try
+        {
+            var dir = Path.GetDirectoryName(path);
+            if (string.IsNullOrEmpty(dir)) return;
+
+            _fileWatcher = new FileSystemWatcher(dir, Path.GetFileName(path))
+            {
+                NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.Size,
+            };
+            _fileWatcher.Changed += OnLinkedFileEvent;
+            _fileWatcher.Created += OnLinkedFileEvent;
+            _fileWatcher.Renamed += OnLinkedFileEvent;
+            _fileWatcher.EnableRaisingEvents = true;
+        }
+        catch (Exception)
+        {
+            // 감시는 부가 기능 — 실패해도 편집/저장은 정상 동작.
+            DisposeFileWatcher();
+        }
+    }
+
+    private void OnLinkedFileEvent(object sender, FileSystemEventArgs e)
+    {
+        // 콜백은 스레드풀 스레드 — UI 로 넘겨 디바운스 타이머를 재시작.
+        Dispatcher.BeginInvoke(() => { _fileReloadTimer.Stop(); _fileReloadTimer.Start(); });
+    }
+
+    private async Task ReloadLinkedFileAsync()
+    {
+        if (!_viewModel.IsLinkedFile || _reloadPromptOpen) return;
+        var path = _viewModel.LinkedFilePath!;
+
+        string fileText;
+        try { (fileText, _) = await LinkedFile.ReadAsync(path).ConfigureAwait(true); }
+        catch { return; }   // 파일이 잠시 잠겼거나 삭제 중 — 다음 이벤트에서 재시도
+
+        var editorText = GetEditorPlainText();
+        if (string.Equals(fileText, editorText, StringComparison.Ordinal))
+        {
+            // 우리가 방금 쓴 내용이거나 실질 변화 없음 — 동기화 기준만 갱신.
+            _viewModel.MarkSynced(fileText);
+            return;
+        }
+
+        var hasLocalEdits = !string.Equals(editorText, _viewModel.LastSyncedText, StringComparison.Ordinal);
+        if (hasLocalEdits)
+        {
+            _reloadPromptOpen = true;
+            try
+            {
+                var choice = MessageBox.Show(this,
+                    "이 파일이 다른 프로그램에서 변경되었습니다.\n디스크의 내용으로 다시 불러올까요?\n\n" +
+                    "[예] 디스크 내용으로 교체 (편집 중이던 내용은 사라집니다)\n" +
+                    "[아니오] 지금 편집 내용을 유지 (다음 저장 시 파일을 덮어씁니다)",
+                    "StickyPad — 파일 변경 감지",
+                    MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
+                if (choice != MessageBoxResult.Yes) return;
+            }
+            finally { _reloadPromptOpen = false; }
+        }
+
+        ReplaceEditorText(fileText);
+        _viewModel.UpdateContent(fileText, _viewModel.Format);
+        _viewModel.MarkSynced(fileText);
+        if (IsMarkup && Preview.Visibility == Visibility.Visible) RenderPreview();
+    }
+
+    private void ReplaceEditorText(string text)
+    {
+        _suppressEditorSync = true;
+        try
+        {
+            Editor.Document.Blocks.Clear();
+            foreach (var line in text.Replace("\r\n", "\n").Split('\n'))
+            {
+                Editor.Document.Blocks.Add(new Paragraph(new Run(line)));
+            }
+        }
+        finally
+        {
+            _suppressEditorSync = false;
+        }
+    }
+
+    private void DisposeFileWatcher()
+    {
+        _fileReloadTimer?.Stop();
+        if (_fileWatcher is null) return;
+        try
+        {
+            _fileWatcher.EnableRaisingEvents = false;
+            _fileWatcher.Changed -= OnLinkedFileEvent;
+            _fileWatcher.Created -= OnLinkedFileEvent;
+            _fileWatcher.Renamed -= OnLinkedFileEvent;
+            _fileWatcher.Dispose();
+        }
+        catch { /* nothing to do */ }
+        _fileWatcher = null;
+    }
+
     private async void OnClosing(object? sender, CancelEventArgs e)
     {
         try { await _viewModel.FlushAsync().ConfigureAwait(true); }
@@ -519,9 +701,13 @@ public partial class NoteWindow : Window
 
     private async void DeleteButton_OnClick(object sender, RoutedEventArgs e)
     {
+        var message = _viewModel.IsLinkedFile
+            ? "이 연동 노트를 휴지통으로 보낼까요?\n연결된 원본 파일(" +
+              Path.GetFileName(_viewModel.LinkedFilePath!) + ")은 삭제되지 않고 그대로 남습니다."
+            : "Delete this note? This cannot be undone.";
         var confirm = MessageBox.Show(
             this,
-            "Delete this note? This cannot be undone.",
+            message,
             "StickyPad",
             MessageBoxButton.OKCancel,
             MessageBoxImage.Warning,

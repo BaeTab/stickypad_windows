@@ -67,6 +67,7 @@ public sealed class TrayService : ITrayService
         var menu = new ContextMenu();
 
         menu.Items.Add(MenuItem("New note  (Ctrl+Shift+N)", () => _windowManager.CreateAndShowNew()));
+        menu.Items.Add(MenuItem("Open markdown file…", OpenMarkdownFile));
         menu.Items.Add(MenuItem("All notes…  (Ctrl+Shift+L)", () => _windowManager.OpenNotesList()));
         menu.Items.Add(MenuItem("Settings…", () => _windowManager.OpenSettings()));
         menu.Items.Add(new Separator());
@@ -116,6 +117,18 @@ public sealed class TrayService : ITrayService
         };
 
         return menu;
+    }
+
+    private async void OpenMarkdownFile()
+    {
+        var dlg = new Microsoft.Win32.OpenFileDialog
+        {
+            Filter = Utils.LinkedFile.OpenDialogFilter,
+            Title = "Markdown / 텍스트 파일 열기",
+        };
+        if (dlg.ShowDialog() != true) return;
+        try { await _windowManager.OpenFileAsync(dlg.FileName); }
+        catch (Exception ex) { _logger.LogError(ex, "Open markdown file failed"); }
     }
 
     private static MenuItem MenuItem(string header, Action action)

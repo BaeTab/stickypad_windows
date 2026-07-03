@@ -16,6 +16,10 @@ public interface INoteRepository
     Task<Note?> GetByIdAsync(Guid id);
     Task<Note?> FindByTitleAsync(string title);
 
+    /// 주어진 절대 경로에 연동된(휴지통이 아닌) 노트를 찾는다. 같은 .md 파일을 다시 열 때
+    /// 중복 노트를 만들지 않고 기존 노트를 재사용하기 위한 조회. 경로 비교는 대소문자 무시.
+    Task<Note?> FindByLinkedPathAsync(string path);
+
     /// 노트 문서를 통째로 삽입/교체. 휴지통 상태(IsDeleted/DeletedAt)까지 인자 그대로 반영한다.
     /// 백업 import·새 노트 생성처럼 "들어온 값이 곧 정답"인 경로 전용.
     Task UpsertAsync(Note note);

@@ -24,6 +24,12 @@ public sealed partial class NoteViewModel : ObservableObject, IDisposable
     private readonly Func<NoteViewModel, Task> _onDeleteRequested;
     private bool _hydrating = true;
 
+    /// 마지막으로 파일과 동기화된 원본 텍스트. 외부 변경 감지·충돌 판단·불필요한 재저장 방지에 쓴다.
+    private string _lastSyncedText;
+
+    /// true 면 이 노트의 편집이 더 이상 연동 파일에 기록되지 않는다(삭제·연결 해제 시).
+    private bool _fileSyncSuspended;
+
     public Guid Id => Note.Id;
     public Note Note { get; }
 
@@ -103,10 +109,27 @@ public sealed partial class NoteViewModel : ObservableObject, IDisposable
         _color = note.Color;
         _opacity = ClampOpacity(note.Opacity);
         _isAlwaysOnTop = note.IsAlwaysOnTop;
+        _lastSyncedText = note.Content;
 
         _saver = new DebounceAction(SaveDelay, _ => SaveAsync());
         _hydrating = false;
     }
+
+    /// 외부 파일과 연동된 노트인지.
+    public bool IsLinkedFile => !string.IsNullOrEmpty(Note.LinkedFilePath);
+
+    /// 연동된 파일의 절대 경로(없으면 null).
+    public string? LinkedFilePath => Note.LinkedFilePath;
+
+    /// 마지막으로 파일과 동기화된 원본 텍스트(외부 변경 시 로컬 편집 여부 판단용).
+    public string LastSyncedText => _lastSyncedText;
+
+    /// 파일에서 다시 읽어온(또는 파일로 막 써넣은) 내용을 '동기화 기준'으로 표시.
+    public void MarkSynced(string text) => _lastSyncedText = text;
+
+    /// 이후 저장이 연동 파일을 건드리지 않도록 중단(삭제·연결 해제 시 호출).
+    /// 원본 파일이 빈 내용으로 덮어써지는 사고를 막는다.
+    public void SuspendFileSync() => _fileSyncSuspended = true;
 
     partial void OnContentChanged(string value) => Schedule();
     partial void OnFormatChanged(NoteContentFormat value) => Schedule();
@@ -137,7 +160,10 @@ public sealed partial class NoteViewModel : ObservableObject, IDisposable
         Format = format;
         var plain = TextExtraction.ToPlainText(content, format);
         PlainText = plain;
-        Title = TextExtraction.DeriveTitle(plain);
+        // 연동 노트의 제목은 파일 이름으로 고정 — 목록에서 어떤 파일인지 알아보기 쉽게.
+        Title = IsLinkedFile
+            ? System.IO.Path.GetFileName(Note.LinkedFilePath!)
+            : TextExtraction.DeriveTitle(plain);
     }
 
     private void Schedule()
@@ -165,10 +191,35 @@ public sealed partial class NoteViewModel : ObservableObject, IDisposable
             // SaveContentAsync 는 휴지통 상태(IsDeleted/DeletedAt)를 DB 값으로 보존한다.
             // 삭제된 노트의 창이 닫히며 flush 돼도 부활하지 않도록 — UpsertAsync 를 쓰면 안 된다.
             await _repository.SaveContentAsync(Note).ConfigureAwait(false);
+
+            await SyncToLinkedFileAsync().ConfigureAwait(false);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to save note {NoteId}", Note.Id);
+        }
+    }
+
+    /// 연동 노트라면 편집 내용을 원본 파일에 기록한다. 내용이 실제로 바뀐 경우에만 써서
+    /// 위치·색상 변경 같은 저장이 파일 mtime 을 건드리지 않게 한다. 삭제/연결 해제 후에는
+    /// (SuspendFileSync) 절대 파일을 건드리지 않아 원본이 빈 내용으로 덮이는 사고를 막는다.
+    private async Task SyncToLinkedFileAsync()
+    {
+        if (!IsLinkedFile || _fileSyncSuspended) return;
+        // 리치 텍스트(XAML)는 절대 텍스트 파일에 쓰지 않는다 — 연동 노트를 실수로 'T'(리치) 모드로
+        // 바꿔도 원본 .md 가 XAML 로 덮이지 않도록 방어. 텍스트 소스 포맷만 파일에 반영한다.
+        if (Format == NoteContentFormat.RichTextXaml) return;
+        if (string.Equals(Content, _lastSyncedText, StringComparison.Ordinal)) return;
+
+        try
+        {
+            var writeUtc = await LinkedFile.WriteAsync(Note.LinkedFilePath!, Content).ConfigureAwait(false);
+            _lastSyncedText = Content;
+            Note.LinkedFileSyncedUtc = writeUtc;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to write linked file {Path}", Note.LinkedFilePath);
         }
     }
 

@@ -302,4 +302,90 @@ public class NoteRepositoryTests
         Assert.Equal(2, purged);
         Assert.Empty(await repo.GetTrashedAsync());
     });
+
+    [Fact]
+    public Task FindByLinkedPath_MatchesCaseInsensitiveAndSkipsTrash() => WithRepo(async repo =>
+    {
+        var note = NewNote("linked");
+        note.LinkedFilePath = @"C:\Docs\Report.md";
+        await repo.UpsertAsync(note);
+
+        // 대소문자 무시 매칭.
+        var found = await repo.FindByLinkedPathAsync(@"c:\docs\report.md");
+        Assert.NotNull(found);
+        Assert.Equal(note.Id, found!.Id);
+
+        // 연동 경로가 없는 조회는 null.
+        Assert.Null(await repo.FindByLinkedPathAsync(@"C:\Docs\Other.md"));
+
+        // 휴지통으로 가면 더 이상 매칭되지 않는다(원본 파일은 코드가 건드리지 않음).
+        await repo.DeleteAsync(note.Id);
+        Assert.Null(await repo.FindByLinkedPathAsync(@"C:\Docs\Report.md"));
+    });
+}
+
+public class LinkedFileTests
+{
+    [Theory]
+    [InlineData("a.md")]
+    [InlineData("a.MARKDOWN")]
+    [InlineData("a.txt")]
+    [InlineData("a.log")]
+    [InlineData("a.unknownext")]
+    public void FormatFor_AlwaysMarkdown_SoRawTextRoundTrips(string name)
+    {
+        // 연동 텍스트 파일은 XAML 오염을 막기 위해 항상 Markdown 소스로 다룬다.
+        Assert.Equal(NoteContentFormat.Markdown, LinkedFile.FormatFor(name));
+    }
+
+    [Theory]
+    [InlineData("notes.md", true)]
+    [InlineData("readme.txt", true)]
+    [InlineData("app.exe", false)]
+    [InlineData("photo.png", false)]
+    [InlineData("archive.zip", false)]
+    public void IsSupported_FiltersBinaries(string name, bool expected)
+    {
+        Assert.Equal(expected, LinkedFile.IsSupported(name));
+    }
+
+    [Fact]
+    public async Task WriteThenRead_RoundTripsWithoutBom()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "stickypad-linked-" + Guid.NewGuid().ToString("N") + ".md");
+        try
+        {
+            const string text = "# 제목\n\n본문 with **bold** 🎯";
+            var writeUtc = await LinkedFile.WriteAsync(path, text);
+
+            // BOM 이 붙지 않아야 한다(UTF-8, no BOM).
+            var bytes = await File.ReadAllBytesAsync(path);
+            Assert.False(bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF);
+
+            var (content, readUtc) = await LinkedFile.ReadAsync(path);
+            Assert.Equal(text, content);
+            Assert.Equal(writeUtc, readUtc);
+        }
+        finally
+        {
+            try { File.Delete(path); } catch { /* ignore */ }
+        }
+    }
+
+    [Fact]
+    public async Task Read_DetectsBomEncodedFile()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "stickypad-bom-" + Guid.NewGuid().ToString("N") + ".md");
+        try
+        {
+            const string text = "héllo 안녕";
+            await File.WriteAllTextAsync(path, text, new System.Text.UTF8Encoding(true)); // with BOM
+            var (content, _) = await LinkedFile.ReadAsync(path);
+            Assert.Equal(text, content); // BOM 은 벗겨져 내용만 남아야 한다
+        }
+        finally
+        {
+            try { File.Delete(path); } catch { /* ignore */ }
+        }
+    }
 }

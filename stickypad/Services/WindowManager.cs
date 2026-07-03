@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
@@ -122,6 +123,73 @@ public sealed class WindowManager : IWindowManager
         _settingsWindow.Activate();
     }
 
+    public async Task<NoteWindow?> OpenFileAsync(string path)
+    {
+        var full = LinkedFile.Normalize(path);
+        if (string.IsNullOrEmpty(full)) return null;
+
+        if (!File.Exists(full))
+        {
+            MessageBox.Show($"파일을 찾을 수 없습니다:\n{full}", "StickyPad",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            return null;
+        }
+
+        // 이미 열려 있는 연동 창이면 그 창을 앞으로.
+        var live = _windows.FirstOrDefault(w =>
+            string.Equals(w.ViewModel.LinkedFilePath, full, StringComparison.OrdinalIgnoreCase));
+        if (live is not null)
+        {
+            ShowAndActivate(live);
+            return live;
+        }
+
+        string content;
+        try
+        {
+            (content, _) = await LinkedFile.ReadAsync(full).ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to open linked file {Path}", full);
+            MessageBox.Show($"파일을 열 수 없습니다:\n{ex.Message}", "StickyPad",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            return null;
+        }
+
+        var format = LinkedFile.FormatFor(full);
+        var fileName = Path.GetFileName(full);
+
+        // 같은 파일에 연동된 노트가 DB 에 이미 있으면 재사용(파일이 원본이므로 내용은 파일로 갱신).
+        var note = await _repository.FindByLinkedPathAsync(full).ConfigureAwait(true);
+        if (note is null)
+        {
+            note = new Note
+            {
+                X = 140 + _windows.Count * 24,
+                Y = 140 + _windows.Count * 24,
+                Width = 380,
+                Height = 460,
+                Color = NoteColor.Blue,
+                LinkedFilePath = full,
+            };
+        }
+
+        note.LinkedFilePath = full;
+        note.Content = content;
+        note.Format = format;
+        note.PlainText = TextExtraction.ToPlainText(content, format);
+        note.Title = fileName;
+        note.Tags = TextExtraction.ExtractTags(note.PlainText);
+        await _repository.UpsertAsync(note).ConfigureAwait(true);
+
+        var window = BuildWindow(note);
+        window.OpenInPreview = true;   // .md 를 열면 렌더링된 화면으로 먼저 보여준다.
+        window.Show();
+        window.Activate();
+        return window;
+    }
+
     public bool FocusNoteByTitle(string title)
     {
         if (string.IsNullOrWhiteSpace(title)) return false;
@@ -179,7 +247,8 @@ public sealed class WindowManager : IWindowManager
             _repository,
             _loggerFactory.CreateLogger<NoteViewModel>(),
             DeleteAsync);
-        var window = new NoteWindow(vm, OnWindowDismissed, CreateAndShowNew, OpenNotesList, FocusNoteByTitle);
+        var window = new NoteWindow(vm, OnWindowDismissed, CreateAndShowNew, OpenNotesList, FocusNoteByTitle,
+            path => OpenFileAsync(path));
         _windows.Add(window);
         return window;
     }
@@ -199,6 +268,9 @@ public sealed class WindowManager : IWindowManager
         var window = _windows.Find(w => ReferenceEquals(w.ViewModel, vm));
         if (window is not null)
         {
+            // 연동 노트를 지울 때 빈 내용이 원본 파일에 기록돼 파일이 비워지는 사고를 막는다.
+            // 노트(DB 항목)만 휴지통으로 가고 원본 .md 파일은 그대로 둔다.
+            vm.SuspendFileSync();
             vm.UpdateContent(string.Empty, NoteContentFormat.PlainText);
             window.RequestClose();
         }
