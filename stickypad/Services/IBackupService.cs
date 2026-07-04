@@ -22,4 +22,10 @@ public interface IBackupService
 
     /// 단일 노트를 시스템 인쇄 UI로 인쇄(오프스크린이 아닌, 보이는 미리보기 창).
     Task PrintNoteAsync(Note note);
+
+    /// 활성 노트 전체를 폴더에 노트별 .md(왕복 가능, id 포함)로 저장한다(볼트 내보내기).
+    Task ExportVaultAsync();
+
+    /// 폴더의 .md 들을 노트로 가져온다. 같은 id 는 갱신(왕복). 손수 만든 .md 도 허용.
+    Task ImportVaultAsync();
 }

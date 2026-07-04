@@ -545,6 +545,34 @@ Failed files: {2}</value>
   <data name="Backup_ImportConfirmFormat" xml:space="preserve">
     <value>Import {0} note(s)? Existing notes with the same id will be overwritten.</value>
   </data>
+  <data name="Vault_Menu" xml:space="preserve">
+    <value>Vault (folder of .md)</value>
+  </data>
+  <data name="Vault_Export" xml:space="preserve">
+    <value>Export to vault…</value>
+  </data>
+  <data name="Vault_Import" xml:space="preserve">
+    <value>Import from vault…</value>
+  </data>
+  <data name="Vault_ChooseExportFolder" xml:space="preserve">
+    <value>Choose a folder for the vault</value>
+  </data>
+  <data name="Vault_ChooseImportFolder" xml:space="preserve">
+    <value>Choose a vault folder to import</value>
+  </data>
+  <data name="Vault_ExportedFormat" xml:space="preserve">
+    <value>Exported {0} notes to the vault.
+{1}</value>
+  </data>
+  <data name="Vault_ImportConfirmFormat" xml:space="preserve">
+    <value>Import {0} note(s) from the vault? Notes with the same id are updated.</value>
+  </data>
+  <data name="Vault_ImportedFormat" xml:space="preserve">
+    <value>Imported {0} notes from the vault.</value>
+  </data>
+  <data name="Vault_NoMarkdownFiles" xml:space="preserve">
+    <value>No .md files found in that folder.</value>
+  </data>
   <data name="Print_WindowTitle" xml:space="preserve">
     <value>StickyPad — Print</value>
   </data>

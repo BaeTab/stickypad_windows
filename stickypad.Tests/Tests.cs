@@ -191,6 +191,74 @@ public class UpdateIntegrityTests
     }
 }
 
+public class VaultMarkdownTests
+{
+    [Fact]
+    public void RoundTrip_Markdown_PreservesEverything()
+    {
+        var n = new Note
+        {
+            Id = Guid.NewGuid(),
+            Title = "회의 노트",
+            Content = "# 회의\n\n- 안건 1\n- 안건 2",
+            Format = NoteContentFormat.Markdown,
+            Color = NoteColor.Blue,
+            Tags = new() { "업무", "회의" },
+            CreatedAt = new DateTime(2026, 7, 1, 9, 30, 0, DateTimeKind.Utc),
+            ModifiedAt = new DateTime(2026, 7, 5, 14, 0, 0, DateTimeKind.Utc),
+        };
+        var r = VaultMarkdown.FromMarkdown(VaultMarkdown.ToMarkdown(n));
+        Assert.Equal(n.Id, r.Id);
+        Assert.Equal(NoteContentFormat.Markdown, r.Format);
+        Assert.Equal(NoteColor.Blue, r.Color);
+        Assert.Equal(n.Content, r.Content.TrimEnd());
+        Assert.Equal(new[] { "업무", "회의" }, r.Tags);
+        Assert.Equal(n.CreatedAt, r.CreatedAt);
+        Assert.Equal(n.ModifiedAt, r.ModifiedAt);
+        Assert.Equal("회의 노트", r.Title);
+    }
+
+    [Fact]
+    public void RichTextXaml_DowngradedToReadableText()
+    {
+        var n = new Note
+        {
+            Format = NoteContentFormat.RichTextXaml,
+            Content = "<Section><Run>x</Run></Section>",
+            PlainText = "hello world",
+            Color = NoteColor.Pink,
+        };
+        var md = VaultMarkdown.ToMarkdown(n);
+        Assert.Contains("format: PlainText", md);
+        Assert.Contains("hello world", md);
+        Assert.DoesNotContain("<Section>", md);        // XAML 이 볼트에 새지 않음
+        var r = VaultMarkdown.FromMarkdown(md);
+        Assert.Equal(NoteContentFormat.PlainText, r.Format);
+        Assert.Equal("hello world", r.Content.Trim());
+    }
+
+    [Fact]
+    public void PlainMarkdown_NoFrontMatter_ParsedTolerantly()
+    {
+        var r = VaultMarkdown.FromMarkdown("# Hello\n\nSome #idea here", "notes.md");
+        Assert.NotEqual(Guid.Empty, r.Id);              // 새 id 부여
+        Assert.Equal(NoteContentFormat.Markdown, r.Format);
+        Assert.Contains("Hello", r.Content);
+        Assert.Contains("idea", r.Tags);                // 본문에서 태그 추출
+    }
+
+    [Fact]
+    public void BadValues_FallBackSafely()
+    {
+        var md = "---\nid: not-a-guid\ntitle: X\nformat: Bogus\ncolor: Rainbow\n---\n\nbody";
+        var r = VaultMarkdown.FromMarkdown(md);
+        Assert.NotEqual(Guid.Empty, r.Id);              // 불량 id → 새 Guid
+        Assert.Equal(NoteContentFormat.Markdown, r.Format); // 불량 format → 기본
+        Assert.Equal(NoteColor.Yellow, r.Color);        // 불량 color → 기본
+        Assert.Equal("body", r.Content.Trim());
+    }
+}
+
 public class LocalizationTests
 {
     [Fact]

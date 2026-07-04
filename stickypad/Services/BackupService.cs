@@ -443,6 +443,129 @@ public sealed class BackupService : IBackupService
         _logger.LogInformation("Imported {Count} notes from {Path}", payload.Notes.Count, dlg.FileName);
     }
 
+    public async Task ExportVaultAsync()
+    {
+        var dlg = new OpenFolderDialog { Title = Strings.Vault_ChooseExportFolder };
+        if (dlg.ShowDialog() != true) return;
+        var folder = dlg.FolderName;
+
+        var notes = await _repository.GetAllAsync().ConfigureAwait(true);
+
+        // 폴더에 이미 있는 파일명을 미리 예약해 둔다 — 같은 이름의 기존 파일을 덮어쓰지 않도록.
+        var taken = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        try
+        {
+            foreach (var existing in Directory.EnumerateFiles(folder))
+            {
+                taken.Add(Path.GetFileName(existing).ToLowerInvariant());
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not enumerate target folder before vault export: {Folder}", folder);
+        }
+
+        var count = 0;
+        var failures = new List<string>();
+        foreach (var note in notes)
+        {
+            var baseName = ExportNaming.SafeFileName(note.Title);
+            var fileName = ExportNaming.UniqueFileName(baseName, ".md", taken);
+            try
+            {
+                await File.WriteAllTextAsync(Path.Combine(folder, fileName), VaultMarkdown.ToMarkdown(note))
+                    .ConfigureAwait(true);
+                count++;
+            }
+            catch (Exception ex)
+            {
+                // 한 노트가 실패해도 나머지는 계속 저장하고, 마지막에 실패 목록을 보고한다.
+                _logger.LogError(ex, "Failed to write vault note {Id} to {File}", note.Id, fileName);
+                failures.Add(fileName);
+            }
+        }
+
+        _logger.LogInformation("Exported {Count}/{Total} notes to vault {Folder}", count, notes.Count, folder);
+        if (failures.Count == 0)
+        {
+            MessageBox.Show(string.Format(Strings.Vault_ExportedFormat, count, folder), "StickyPad",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        else
+        {
+            var list = string.Join(", ", failures.Take(5)) + (failures.Count > 5 ? " …" : "");
+            MessageBox.Show(
+                string.Format(Strings.Backup_MarkdownFilesPartialFailureFormat, count, failures.Count, list),
+                "StickyPad", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    public async Task ImportVaultAsync()
+    {
+        var dlg = new OpenFolderDialog { Title = Strings.Vault_ChooseImportFolder };
+        if (dlg.ShowDialog() != true) return;
+        var folder = dlg.FolderName;
+
+        List<string> files;
+        try
+        {
+            files = Directory.EnumerateFiles(folder, "*.md", SearchOption.TopDirectoryOnly).ToList();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Could not enumerate vault folder: {Folder}", folder);
+            return;
+        }
+
+        if (files.Count == 0)
+        {
+            MessageBox.Show(Strings.Vault_NoMarkdownFiles, "StickyPad",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var confirm = MessageBox.Show(
+            string.Format(Strings.Vault_ImportConfirmFormat, files.Count),
+            "StickyPad",
+            MessageBoxButton.OKCancel,
+            MessageBoxImage.Question);
+        if (confirm != MessageBoxResult.OK) return;
+
+        var count = 0;
+        var failures = new List<string>();
+        foreach (var file in files)
+        {
+            try
+            {
+                var text = await File.ReadAllTextAsync(file).ConfigureAwait(true);
+                var note = SanitizeImportedNote(VaultMarkdown.FromMarkdown(text, Path.GetFileNameWithoutExtension(file)));
+                await _repository.UpsertAsync(note).ConfigureAwait(true);
+                count++;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to import vault file {File}", file);
+                failures.Add(Path.GetFileName(file));
+            }
+        }
+
+        await _windowManager.ReloadAsync().ConfigureAwait(true);
+        _logger.LogInformation("Imported {Count}/{Total} notes from vault {Folder}", count, files.Count, folder);
+
+        if (failures.Count == 0)
+        {
+            MessageBox.Show(string.Format(Strings.Vault_ImportedFormat, count), "StickyPad",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        else
+        {
+            var list = string.Join(", ", failures.Take(5)) + (failures.Count > 5 ? " …" : "");
+            MessageBox.Show(
+                string.Format(Strings.Backup_MarkdownFilesPartialFailureFormat, count, failures.Count, list),
+                "StickyPad", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
     /// 신뢰할 수 없는 백업 파일에서 온 노트의 위험 필드를 무해화한다(보안).
     /// - RichTextXaml 은 창이 열릴 때 비제한 XAML 파서(TextRange.Load)로 ObjectDataProvider 같은
     ///   가젯이 실행돼 임의 코드 실행이 가능하므로 순수 텍스트로 강등한다.

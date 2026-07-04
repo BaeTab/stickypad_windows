@@ -486,6 +486,34 @@
   <data name="Backup_ImportConfirmFormat" xml:space="preserve">
     <value>{0}개의 노트를 가져올까요? 같은 id의 기존 노트는 덮어씁니다.</value>
   </data>
+  <data name="Vault_Menu" xml:space="preserve">
+    <value>볼트 (폴더 .md)</value>
+  </data>
+  <data name="Vault_Export" xml:space="preserve">
+    <value>볼트로 내보내기…</value>
+  </data>
+  <data name="Vault_Import" xml:space="preserve">
+    <value>볼트에서 가져오기…</value>
+  </data>
+  <data name="Vault_ChooseExportFolder" xml:space="preserve">
+    <value>볼트를 저장할 폴더 선택</value>
+  </data>
+  <data name="Vault_ChooseImportFolder" xml:space="preserve">
+    <value>가져올 볼트 폴더 선택</value>
+  </data>
+  <data name="Vault_ExportedFormat" xml:space="preserve">
+    <value>{0}개 노트를 볼트로 내보냈습니다.
+{1}</value>
+  </data>
+  <data name="Vault_ImportConfirmFormat" xml:space="preserve">
+    <value>볼트에서 {0}개 노트를 가져올까요? 같은 id 노트는 갱신됩니다.</value>
+  </data>
+  <data name="Vault_ImportedFormat" xml:space="preserve">
+    <value>볼트에서 {0}개 노트를 가져왔습니다.</value>
+  </data>
+  <data name="Vault_NoMarkdownFiles" xml:space="preserve">
+    <value>그 폴더에 .md 파일이 없습니다.</value>
+  </data>
   <data name="Print_WindowTitle" xml:space="preserve">
     <value>StickyPad — 인쇄</value>
   </data>

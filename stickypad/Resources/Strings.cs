@@ -150,6 +150,16 @@ public static class Strings
     public static string Backup_NoNotesInFile => Get(nameof(Backup_NoNotesInFile));
     public static string Backup_ImportConfirmFormat => Get(nameof(Backup_ImportConfirmFormat));
 
+    public static string Vault_Menu => Get(nameof(Vault_Menu));
+    public static string Vault_Export => Get(nameof(Vault_Export));
+    public static string Vault_Import => Get(nameof(Vault_Import));
+    public static string Vault_ChooseExportFolder => Get(nameof(Vault_ChooseExportFolder));
+    public static string Vault_ChooseImportFolder => Get(nameof(Vault_ChooseImportFolder));
+    public static string Vault_ExportedFormat => Get(nameof(Vault_ExportedFormat));
+    public static string Vault_ImportConfirmFormat => Get(nameof(Vault_ImportConfirmFormat));
+    public static string Vault_ImportedFormat => Get(nameof(Vault_ImportedFormat));
+    public static string Vault_NoMarkdownFiles => Get(nameof(Vault_NoMarkdownFiles));
+
     public static string Print_WindowTitle => Get(nameof(Print_WindowTitle));
     public static string Print_PrepareFailedFormat => Get(nameof(Print_PrepareFailedFormat));
 

@@ -102,6 +102,7 @@ public sealed class TrayService : ITrayService
             try { await _backupService.ExportNotesAsTextAsync(); }
             catch (Exception ex) { _logger.LogError(ex, "Text export failed"); }
         }));
+        menu.Items.Add(BuildVaultMenu());
 
         menu.Items.Add(new Separator());
         menu.Items.Add(MenuItem(Strings.Tray_CheckForUpdates, async () =>
@@ -141,6 +142,22 @@ public sealed class TrayService : ITrayService
         {
             parent.Items.Add(MenuItem(template.Name(), () => _windowManager.CreateAndShowNew(template)));
         }
+        return parent;
+    }
+
+    private MenuItem BuildVaultMenu()
+    {
+        var parent = new MenuItem { Header = Strings.Vault_Menu };
+        parent.Items.Add(MenuItem(Strings.Vault_Export, async () =>
+        {
+            try { await _backupService.ExportVaultAsync(); }
+            catch (Exception ex) { _logger.LogError(ex, "Vault export failed"); }
+        }));
+        parent.Items.Add(MenuItem(Strings.Vault_Import, async () =>
+        {
+            try { await _backupService.ImportVaultAsync(); }
+            catch (Exception ex) { _logger.LogError(ex, "Vault import failed"); }
+        }));
         return parent;
     }
 
