@@ -21,6 +21,8 @@ public sealed class NoteRepository : INoteRepository, IDisposable
     {
         Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
         _db = new LiteDatabase($"Filename={dbPath};Connection=shared");
+        // DB 스키마를 최신 버전까지 마이그레이션(2.0 데이터 모델 진화 대비 기반).
+        SchemaMigrator.Migrate(_db);
         var col = _db.GetCollection<Note>(CollectionName);
         col.EnsureIndex(x => x.ModifiedAt);
         col.EnsureIndex(x => x.Title);

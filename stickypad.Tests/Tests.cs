@@ -1,15 +1,66 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
+using LiteDB;
 using StickyPad.Models;
 using StickyPad.Resources;
 using StickyPad.Services;
 using StickyPad.Utils;
 
 namespace StickyPad.Tests;
+
+public class SchemaMigratorTests
+{
+    private static LiteDatabase NewDb() => new(new MemoryStream());
+    private static readonly (int, Action<LiteDatabase>)[] None = Array.Empty<(int, Action<LiteDatabase>)>();
+
+    [Fact]
+    public void FreshDb_StampedToBaseline_AndIdempotent()
+    {
+        using var db = NewDb();
+        Assert.Equal(0, db.UserVersion);            // 표시 전
+        SchemaMigrator.Migrate(db, 1, None);
+        Assert.Equal(1, db.UserVersion);            // baseline
+        SchemaMigrator.Migrate(db, 1, None);        // 다시 실행해도
+        Assert.Equal(1, db.UserVersion);            // 그대로(idempotent)
+    }
+
+    [Fact]
+    public void RunsMigrationsInOrder()
+    {
+        using var db = NewDb();
+        var applied = new List<int>();
+        var migrations = new (int, Action<LiteDatabase>)[]
+        {
+            (1, _ => applied.Add(1)),
+            (2, _ => applied.Add(2)),
+        };
+        SchemaMigrator.Migrate(db, 3, migrations);
+        Assert.Equal(new[] { 1, 2 }, applied);      // v1→v2→v3 순서대로
+        Assert.Equal(3, db.UserVersion);
+    }
+
+    [Fact]
+    public void ThrowsOnMissingMigration()
+    {
+        using var db = NewDb();
+        var migrations = new (int, Action<LiteDatabase>)[] { (1, _ => { }) }; // 2→3 없음
+        Assert.Throws<InvalidOperationException>(() => SchemaMigrator.Migrate(db, 3, migrations));
+    }
+
+    [Fact]
+    public void NewerDb_LeftUntouched()
+    {
+        using var db = NewDb();
+        db.UserVersion = 5;                          // 앱보다 최신(다운그레이드 상황)
+        SchemaMigrator.Migrate(db, 1, None);
+        Assert.Equal(5, db.UserVersion);             // 손대지 않음
+    }
+}
 
 public class SecurityHardeningTests
 {
