@@ -1,5 +1,7 @@
 # StickyPad
 
+**English** | [한국어](README.ko.md)
+
 > 📝 A lightweight, fast sticky‑note app for Windows — instant capture, rich text, tags, and wiki‑style links, all stored locally.
 
 StickyPad lives in your system tray and puts a note on your desktop in a single keystroke. Notes are colorful, resizable, always‑on‑top‑capable, and searchable. Everything is saved locally in an embedded database — no account, no cloud, no telemetry.
