@@ -259,6 +259,80 @@ public class VaultMarkdownTests
     }
 }
 
+public class VaultStoreTests
+{
+    private static string TempFolder() => Path.Combine(Path.GetTempPath(), "sp-vault-" + Guid.NewGuid().ToString("N"));
+    private static void TryDelete(string dir) { try { Directory.Delete(dir, true); } catch { } }
+
+    [Fact]
+    public void SaveThenLoad_RoundTripsContentAndAppState()
+    {
+        var folder = TempFolder();
+        try
+        {
+            var note = new Note
+            {
+                Id = Guid.NewGuid(), Title = "회의", Content = "# 회의\n\n- x",
+                Format = NoteContentFormat.Markdown, Color = NoteColor.Blue, Tags = new() { "업무" },
+                X = 120, Y = 240, Width = 360, Height = 300, Opacity = 0.8, IsAlwaysOnTop = true,
+                CreatedAt = new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc),
+                ModifiedAt = new DateTime(2026, 7, 5, 0, 0, 0, DateTimeKind.Utc),
+            };
+            VaultStore.SaveAll(folder, new[] { note });
+            var r = Assert.Single(VaultStore.LoadAll(folder));
+
+            Assert.Equal(note.Id, r.Id);
+            Assert.Equal(note.Content, r.Content.TrimEnd());
+            Assert.Equal(NoteColor.Blue, r.Color);
+            Assert.Equal(new[] { "업무" }, r.Tags);
+            Assert.Equal(120.0, r.X);
+            Assert.Equal(240.0, r.Y);
+            Assert.Equal(360.0, r.Width);
+            Assert.Equal(300.0, r.Height);
+            Assert.Equal(0.8, r.Opacity, 6);
+            Assert.True(r.IsAlwaysOnTop);
+        }
+        finally { TryDelete(folder); }
+    }
+
+    [Fact]
+    public void SaveAll_ReusesFileNameForSameId()
+    {
+        var folder = TempFolder();
+        try
+        {
+            var note = new Note { Id = Guid.NewGuid(), Title = "First", Content = "a", Format = NoteContentFormat.Markdown };
+            VaultStore.SaveAll(folder, new[] { note });
+            var firstFile = Directory.EnumerateFiles(folder, "*.md").Single();
+
+            note.Title = "Renamed"; note.Content = "b";  // 제목이 바뀌어도
+            VaultStore.SaveAll(folder, new[] { note });
+            var files = Directory.EnumerateFiles(folder, "*.md").ToList();
+
+            Assert.Single(files);              // 새 파일을 만들지 않고
+            Assert.Equal(firstFile, files[0]); // 같은 파일에 저장
+        }
+        finally { TryDelete(folder); }
+    }
+
+    [Fact]
+    public void LoadAll_ReadsHandAuthoredMarkdown_WithDefaults()
+    {
+        var folder = TempFolder();
+        try
+        {
+            Directory.CreateDirectory(folder);
+            File.WriteAllText(Path.Combine(folder, "hand.md"), "# Hand\n\nno front matter #idea");
+            var r = Assert.Single(VaultStore.LoadAll(folder));
+
+            Assert.NotEqual(Guid.Empty, r.Id);   // 새 id
+            Assert.Equal(280.0, r.Width);        // Note 기본 크기
+            Assert.Contains("idea", r.Tags);     // 본문 태그 추출
+        }
+        finally { TryDelete(folder); }
+    }
+}
+
 public class LocalizationTests
 {
     [Fact]
