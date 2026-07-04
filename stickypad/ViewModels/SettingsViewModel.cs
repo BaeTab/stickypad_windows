@@ -18,6 +18,9 @@ public sealed partial class SettingsViewModel : ObservableObject
     /// 언어 선택 콤보박스 항목: 값(설정에 저장되는 코드)과 표시 라벨.
     public sealed record LanguageOption(string Value, string Label);
 
+    /// 저장소 선택 콤보박스 항목: 값(설정에 저장되는 코드)과 표시 라벨.
+    public sealed record StorageOption(string Value, string Label);
+
     [ObservableProperty]
     private bool _autoStartWithWindows;
 
@@ -37,6 +40,13 @@ public sealed partial class SettingsViewModel : ObservableObject
     private string _selectedLanguage;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsVaultMode))]
+    private string _selectedStorageMode;
+
+    [ObservableProperty]
+    private string? _vaultPath;
+
+    [ObservableProperty]
     private string? _validationError;
 
     public IReadOnlyList<LanguageOption> LanguageOptions { get; } =
@@ -45,6 +55,15 @@ public sealed partial class SettingsViewModel : ObservableObject
         new LanguageOption("ko", "한국어"),
         new LanguageOption("en", "English"),
     ];
+
+    public IReadOnlyList<StorageOption> StorageOptions { get; } =
+    [
+        new StorageOption("litedb", Strings.Settings_StorageLiteDb),
+        new StorageOption("vault", Strings.Settings_StorageVault),
+    ];
+
+    /// 저장소 선택이 볼트 모드인지 여부 — 폴더 선택 UI 표시 여부에 바인딩.
+    public bool IsVaultMode => SelectedStorageMode == "vault";
 
     /// Raised after a successful save so the hosting window can close itself.
     public event EventHandler? Saved;
@@ -63,6 +82,18 @@ public sealed partial class SettingsViewModel : ObservableObject
         _notesListHotkey = current.NotesListHotkey;
         _autoCheckForUpdates = current.AutoCheckForUpdates;
         _selectedLanguage = current.Language;
+        _selectedStorageMode = current.StorageMode;
+        _vaultPath = current.VaultPath;
+    }
+
+    [RelayCommand]
+    private void BrowseVault()
+    {
+        var dialog = new Microsoft.Win32.OpenFolderDialog { Title = Strings.Settings_VaultFolderDialogTitle };
+        if (dialog.ShowDialog() == true)
+        {
+            VaultPath = dialog.FolderName;
+        }
     }
 
     [RelayCommand]
@@ -81,6 +112,11 @@ public sealed partial class SettingsViewModel : ObservableObject
                 return;
             }
         }
+        if (SelectedStorageMode == "vault" && string.IsNullOrWhiteSpace(VaultPath))
+        {
+            ValidationError = Strings.Settings_VaultPathRequired;
+            return;
+        }
         ValidationError = null;
 
         var current = _settings.Current;
@@ -90,6 +126,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         current.AutoStartWithWindows = AutoStartWithWindows;
         current.AutoCheckForUpdates = AutoCheckForUpdates;
         current.Language = SelectedLanguage;
+        current.StorageMode = SelectedStorageMode;
+        current.VaultPath = VaultPath;
         await _settings.SaveAsync().ConfigureAwait(true);
 
         _autoStart.SetEnabled(AutoStartWithWindows);

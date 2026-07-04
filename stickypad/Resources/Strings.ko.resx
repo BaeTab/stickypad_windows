@@ -100,6 +100,24 @@
   <data name="Settings_HotkeyInvalidNewNote" xml:space="preserve">
     <value>새 노트 단축키가 올바르지 않습니다 (수정키 + 키 조합 필요).</value>
   </data>
+  <data name="Settings_Storage" xml:space="preserve">
+    <value>저장소</value>
+  </data>
+  <data name="Settings_StorageLiteDb" xml:space="preserve">
+    <value>내장 데이터베이스 (기본)</value>
+  </data>
+  <data name="Settings_StorageVault" xml:space="preserve">
+    <value>볼트 폴더 (.md 파일)</value>
+  </data>
+  <data name="Settings_BrowseVault" xml:space="preserve">
+    <value>폴더 선택…</value>
+  </data>
+  <data name="Settings_VaultFolderDialogTitle" xml:space="preserve">
+    <value>볼트 폴더 선택</value>
+  </data>
+  <data name="Settings_VaultPathRequired" xml:space="preserve">
+    <value>볼트 모드를 쓰려면 볼트 폴더를 선택하세요.</value>
+  </data>
   <data name="Settings_HotkeyInvalidList" xml:space="preserve">
     <value>전체 목록 단축키가 올바르지 않습니다 (수정키 + 키 조합 필요).</value>
   </data>

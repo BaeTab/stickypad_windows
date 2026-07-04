@@ -162,6 +162,24 @@
   <data name="Settings_HotkeyInvalidList" xml:space="preserve">
     <value>The all-notes hotkey is invalid (needs a modifier + key).</value>
   </data>
+  <data name="Settings_Storage" xml:space="preserve">
+    <value>Storage</value>
+  </data>
+  <data name="Settings_StorageLiteDb" xml:space="preserve">
+    <value>Built-in database (default)</value>
+  </data>
+  <data name="Settings_StorageVault" xml:space="preserve">
+    <value>Vault folder (.md files)</value>
+  </data>
+  <data name="Settings_BrowseVault" xml:space="preserve">
+    <value>Choose folder…</value>
+  </data>
+  <data name="Settings_VaultFolderDialogTitle" xml:space="preserve">
+    <value>Choose a vault folder</value>
+  </data>
+  <data name="Settings_VaultPathRequired" xml:space="preserve">
+    <value>Choose a vault folder to use vault mode.</value>
+  </data>
   <data name="NoteList_WindowTitle" xml:space="preserve">
     <value>StickyPad — All notes</value>
   </data>

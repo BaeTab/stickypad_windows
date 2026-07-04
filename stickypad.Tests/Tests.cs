@@ -265,12 +265,12 @@ public class VaultStoreTests
     private static void TryDelete(string dir) { try { Directory.Delete(dir, true); } catch { } }
 
     [Fact]
-    public void SaveThenLoad_RoundTripsContentAndAppState()
+    public void SaveThenLoad_RoundTripsContentStateAndTrash()
     {
         var folder = TempFolder();
         try
         {
-            var note = new Note
+            var active = new Note
             {
                 Id = Guid.NewGuid(), Title = "회의", Content = "# 회의\n\n- x",
                 Format = NoteContentFormat.Markdown, Color = NoteColor.Blue, Tags = new() { "업무" },
@@ -278,58 +278,230 @@ public class VaultStoreTests
                 CreatedAt = new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc),
                 ModifiedAt = new DateTime(2026, 7, 5, 0, 0, 0, DateTimeKind.Utc),
             };
-            VaultStore.SaveAll(folder, new[] { note });
-            var r = Assert.Single(VaultStore.LoadAll(folder));
+            var trashed = new Note
+            {
+                Id = Guid.NewGuid(), Title = "옛 노트", Content = "old", Format = NoteContentFormat.PlainText,
+                IsDeleted = true, DeletedAt = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc),
+            };
+            new VaultStore(folder).Save(new[] { active, trashed });
 
-            Assert.Equal(note.Id, r.Id);
-            Assert.Equal(note.Content, r.Content.TrimEnd());
-            Assert.Equal(NoteColor.Blue, r.Color);
-            Assert.Equal(new[] { "업무" }, r.Tags);
-            Assert.Equal(120.0, r.X);
-            Assert.Equal(240.0, r.Y);
-            Assert.Equal(360.0, r.Width);
-            Assert.Equal(300.0, r.Height);
-            Assert.Equal(0.8, r.Opacity, 6);
-            Assert.True(r.IsAlwaysOnTop);
+            var loaded = new VaultStore(folder).Load();   // 새 인스턴스 = 재시작 시뮬레이션
+            var a = loaded.Single(n => n.Id == active.Id);
+            var t = loaded.Single(n => n.Id == trashed.Id);
+
+            Assert.Equal(active.Content, a.Content.TrimEnd());
+            Assert.Equal(NoteColor.Blue, a.Color);
+            Assert.Equal(new[] { "업무" }, a.Tags);
+            Assert.Equal(120.0, a.X);
+            Assert.Equal(360.0, a.Width);
+            Assert.Equal(0.8, a.Opacity, 6);
+            Assert.True(a.IsAlwaysOnTop);
+            Assert.False(a.IsDeleted);
+            Assert.True(t.IsDeleted);                       // 휴지통 상태 왕복
+            Assert.Equal(trashed.DeletedAt, t.DeletedAt);
         }
         finally { TryDelete(folder); }
     }
 
     [Fact]
-    public void SaveAll_ReusesFileNameForSameId()
+    public void Save_ReusesFileNameForSameId()
     {
         var folder = TempFolder();
         try
         {
+            var store = new VaultStore(folder);
             var note = new Note { Id = Guid.NewGuid(), Title = "First", Content = "a", Format = NoteContentFormat.Markdown };
-            VaultStore.SaveAll(folder, new[] { note });
+            store.Save(new[] { note });
             var firstFile = Directory.EnumerateFiles(folder, "*.md").Single();
 
-            note.Title = "Renamed"; note.Content = "b";  // 제목이 바뀌어도
-            VaultStore.SaveAll(folder, new[] { note });
+            note.Title = "Renamed"; note.Content = "b";     // 제목이 바뀌어도
+            store.Save(new[] { note });
             var files = Directory.EnumerateFiles(folder, "*.md").ToList();
 
-            Assert.Single(files);              // 새 파일을 만들지 않고
-            Assert.Equal(firstFile, files[0]); // 같은 파일에 저장
+            Assert.Single(files);                            // 새 파일 안 만듦
+            Assert.Equal(firstFile, files[0]);               // 같은 파일
         }
         finally { TryDelete(folder); }
     }
 
     [Fact]
-    public void LoadAll_ReadsHandAuthoredMarkdown_WithDefaults()
+    public void DeleteFile_RemovesOnlyThatNote()
+    {
+        var folder = TempFolder();
+        try
+        {
+            var store = new VaultStore(folder);
+            var a = new Note { Id = Guid.NewGuid(), Title = "keep", Content = "a", Format = NoteContentFormat.Markdown };
+            var b = new Note { Id = Guid.NewGuid(), Title = "drop", Content = "b", Format = NoteContentFormat.Markdown };
+            store.Save(new[] { a, b });
+
+            store.DeleteFile(b.Id);                          // b 만 파일 삭제
+            var remaining = new VaultStore(folder).Load();
+            var r = Assert.Single(remaining);
+            Assert.Equal(a.Id, r.Id);
+        }
+        finally { TryDelete(folder); }
+    }
+
+    [Fact]
+    public void Load_ReadsHandAuthoredMarkdown_WithDefaults()
     {
         var folder = TempFolder();
         try
         {
             Directory.CreateDirectory(folder);
             File.WriteAllText(Path.Combine(folder, "hand.md"), "# Hand\n\nno front matter #idea");
-            var r = Assert.Single(VaultStore.LoadAll(folder));
+            var r = Assert.Single(new VaultStore(folder).Load());
 
             Assert.NotEqual(Guid.Empty, r.Id);   // 새 id
             Assert.Equal(280.0, r.Width);        // Note 기본 크기
             Assert.Contains("idea", r.Tags);     // 본문 태그 추출
         }
         finally { TryDelete(folder); }
+    }
+}
+
+public class VaultRepositoryTests
+{
+    private static string TempFolder() => Path.Combine(Path.GetTempPath(), "sp-vaultrepo-" + Guid.NewGuid().ToString("N"));
+    private static void TryDelete(string dir) { try { Directory.Delete(dir, true); } catch { } }
+    private static Note NewNote(string title, string body = "body") => new()
+    {
+        Id = Guid.NewGuid(), Title = title, Content = body, PlainText = body, Format = NoteContentFormat.Markdown,
+    };
+
+    [Fact]
+    public async Task Upsert_PersistsAcrossReopen()
+    {
+        var folder = TempFolder();
+        try
+        {
+            var repo = new VaultRepository(folder);
+            var a = NewNote("A"); var b = NewNote("B");
+            await repo.UpsertAsync(a); await repo.UpsertAsync(b);
+            Assert.Equal(2, (await repo.GetAllAsync()).Count);
+            repo.Dispose();
+
+            var repo2 = new VaultRepository(folder);   // 재시작 시뮬레이션 — 폴더에서 로드
+            var all = await repo2.GetAllAsync();
+            Assert.Equal(2, all.Count);
+            Assert.Contains(all, n => n.Id == a.Id && n.Title == "A");
+            repo2.Dispose();
+        }
+        finally { TryDelete(folder); }
+    }
+
+    [Fact]
+    public async Task Delete_Restore_TrashSemantics()
+    {
+        var folder = TempFolder();
+        try
+        {
+            var repo = new VaultRepository(folder);
+            var a = NewNote("A"); await repo.UpsertAsync(a);
+            await repo.DeleteAsync(a.Id);
+            Assert.Empty(await repo.GetAllAsync());
+            Assert.Single(await repo.GetTrashedAsync());
+            Assert.Null(await repo.GetByIdAsync(a.Id));    // 휴지통은 GetById 에서 제외
+            await repo.RestoreAsync(a.Id);
+            Assert.Single(await repo.GetAllAsync());
+            Assert.Empty(await repo.GetTrashedAsync());
+            repo.Dispose();
+        }
+        finally { TryDelete(folder); }
+    }
+
+    [Fact]
+    public async Task Purge_RemovesNoteAndFile_AcrossReopen()
+    {
+        var folder = TempFolder();
+        try
+        {
+            var repo = new VaultRepository(folder);
+            var a = NewNote("Keep"); var b = NewNote("Drop");
+            await repo.UpsertAsync(a); await repo.UpsertAsync(b);
+            await repo.DeleteAsync(b.Id);
+            await repo.PurgeAsync(b.Id);
+            Assert.Empty(await repo.GetTrashedAsync());
+            Assert.Single(await repo.GetAllAsync());
+            repo.Dispose();
+
+            var repo2 = new VaultRepository(folder);
+            Assert.Single(await repo2.GetAllAsync());
+            Assert.Empty(await repo2.GetTrashedAsync());
+            repo2.Dispose();
+        }
+        finally { TryDelete(folder); }
+    }
+
+    [Fact]
+    public async Task SaveContent_PreservesTrash_AndDoesNotResurrect()
+    {
+        var folder = TempFolder();
+        try
+        {
+            var repo = new VaultRepository(folder);
+            var a = NewNote("A"); await repo.UpsertAsync(a);
+            await repo.DeleteAsync(a.Id);                  // 휴지통으로
+
+            var stale = NewNote("A"); stale.Id = a.Id; stale.IsDeleted = false; // 옛 메모리 복사본
+            await repo.SaveContentAsync(stale);
+            Assert.Empty(await repo.GetAllAsync());        // 부활하지 않음
+            Assert.Single(await repo.GetTrashedAsync());
+
+            await repo.PurgeAsync(a.Id);
+            await repo.SaveContentAsync(NewNote("ghost")); // 캐시에 없는 노트 → 무시
+            Assert.DoesNotContain(await repo.GetAllAsync(), n => n.Title == "ghost");
+            repo.Dispose();
+        }
+        finally { TryDelete(folder); }
+    }
+
+    [Fact]
+    public async Task PurgeTrashedOlderThan_RemovesOldTrash()
+    {
+        var folder = TempFolder();
+        try
+        {
+            var repo = new VaultRepository(folder);
+            var a = NewNote("A"); await repo.UpsertAsync(a);
+            await repo.DeleteAsync(a.Id);
+            var count = await repo.PurgeTrashedOlderThanAsync(DateTime.UtcNow.AddMinutes(1));
+            Assert.Equal(1, count);
+            Assert.Empty(await repo.GetTrashedAsync());
+            repo.Dispose();
+        }
+        finally { TryDelete(folder); }
+    }
+}
+
+// LiteDB(Connection=shared) 파일을 여는 테스트끼리는 병렬 실행 시 드물게 락 경합이 나므로
+// 같은 컬렉션으로 묶어 순차 실행한다(플래키 제거).
+[Collection("LiteDb")]
+public class VaultBootstrapTests
+{
+    [Fact]
+    public async Task EnsureSeeded_CopiesLiteDbNotes_OnlyIntoEmptyVault()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "sp-boot-" + Guid.NewGuid().ToString("N"));
+        var dbPath = Path.Combine(root, "notes.db");
+        var vault = Path.Combine(root, "vault");
+        try
+        {
+            Directory.CreateDirectory(root);
+            using (var db = new NoteRepository(dbPath))
+            {
+                await db.UpsertAsync(new Note { Title = "A", Content = "a", PlainText = "a", Format = NoteContentFormat.Markdown });
+                await db.UpsertAsync(new Note { Title = "B", Content = "b", PlainText = "b", Format = NoteContentFormat.Markdown });
+            }
+
+            VaultBootstrap.EnsureSeeded(vault, dbPath);
+            Assert.Equal(2, new VaultStore(vault).Load().Count);   // LiteDB → 볼트 이관
+
+            VaultBootstrap.EnsureSeeded(vault, dbPath);            // 다시 호출해도
+            Assert.Equal(2, new VaultStore(vault).Load().Count);   // 비어있지 않은 볼트는 안 건드림
+        }
+        finally { try { Directory.Delete(root, true); } catch { } }
     }
 }
 
@@ -542,6 +714,7 @@ public class UpdateServiceVersionTests
     }
 }
 
+[Collection("LiteDb")]
 public class NoteRepositoryTests
 {
     private static string TempDbPath() =>

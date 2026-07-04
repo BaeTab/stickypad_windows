@@ -5,7 +5,7 @@
     xmlns:res="clr-namespace:StickyPad.Resources"
     Title="{x:Static res:Strings.Settings_WindowTitle}"
     Width="400"
-    Height="460"
+    Height="540"
     Background="#FAFAFA"
     FontFamily="Segoe UI"
     ResizeMode="NoResize"
@@ -14,6 +14,8 @@
     WindowStartupLocation="CenterScreen">
     <Grid Margin="20">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -108,8 +110,46 @@
                 SelectedValuePath="Value" />
         </Grid>
 
+        <Grid Grid.Row="8" Margin="0,16,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="90" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <TextBlock VerticalAlignment="Center" Text="{x:Static res:Strings.Settings_Storage}" />
+            <ComboBox
+                Grid.Column="1"
+                Height="30"
+                VerticalContentAlignment="Center"
+                DisplayMemberPath="Label"
+                ItemsSource="{Binding StorageOptions}"
+                SelectedValue="{Binding SelectedStorageMode}"
+                SelectedValuePath="Value" />
+        </Grid>
+
+        <Grid
+            Grid.Row="9"
+            Margin="0,10,0,0"
+            Visibility="{Binding IsVaultMode, Converter={StaticResource BoolToVis}}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBox
+                Height="30"
+                Margin="0,0,8,0"
+                Padding="8,5"
+                VerticalContentAlignment="Center"
+                IsReadOnly="True"
+                Text="{Binding VaultPath, Mode=OneWay}" />
+            <Button
+                Grid.Column="1"
+                Padding="10,5"
+                Command="{Binding BrowseVaultCommand}"
+                Content="{x:Static res:Strings.Settings_BrowseVault}" />
+        </Grid>
+
         <TextBlock
-            Grid.Row="8"
+            Grid.Row="10"
             Margin="0,6,0,0"
             FontSize="11"
             Foreground="#888"
@@ -117,7 +157,7 @@
             TextWrapping="Wrap" />
 
         <TextBlock
-            Grid.Row="9"
+            Grid.Row="11"
             Margin="0,10,0,0"
             VerticalAlignment="Top"
             FontSize="12"
@@ -126,7 +166,7 @@
             TextWrapping="Wrap" />
 
         <StackPanel
-            Grid.Row="10"
+            Grid.Row="12"
             HorizontalAlignment="Right"
             Orientation="Horizontal">
             <Button

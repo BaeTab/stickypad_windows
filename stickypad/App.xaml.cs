@@ -91,7 +91,25 @@ public partial class App : Application
             .UseSerilog()
             .ConfigureServices(services =>
             {
-                services.AddSingleton<INoteRepository>(_ => new NoteRepository(dbPath));
+                services.AddSingleton<INoteRepository>(sp =>
+                {
+                    var s = sp.GetRequiredService<ISettingsService>().Current;
+                    // 볼트 모드(옵트인): 폴더의 .md 집합으로 구동. 실패하면 LiteDB 로 안전 폴백.
+                    if (string.Equals(s.StorageMode, "vault", StringComparison.OrdinalIgnoreCase)
+                        && !string.IsNullOrWhiteSpace(s.VaultPath))
+                    {
+                        try
+                        {
+                            VaultBootstrap.EnsureSeeded(s.VaultPath, dbPath); // 최초 전환 시 LiteDB → 볼트 이관
+                            return new VaultRepository(s.VaultPath);
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Error(ex, "Vault repository init failed; falling back to LiteDB");
+                        }
+                    }
+                    return new NoteRepository(dbPath);
+                });
                 services.AddSingleton<ISettingsService>(sp => new SettingsService(
                     settingsPath, sp.GetRequiredService<ILogger<SettingsService>>()));
                 services.AddSingleton<IAutoStartService, AutoStartService>();

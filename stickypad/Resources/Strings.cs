@@ -25,6 +25,12 @@ public static class Strings
     public static string Settings_RestartNote => Get(nameof(Settings_RestartNote));
     public static string Settings_HotkeyInvalidNewNote => Get(nameof(Settings_HotkeyInvalidNewNote));
     public static string Settings_HotkeyInvalidList => Get(nameof(Settings_HotkeyInvalidList));
+    public static string Settings_Storage => Get(nameof(Settings_Storage));
+    public static string Settings_StorageLiteDb => Get(nameof(Settings_StorageLiteDb));
+    public static string Settings_StorageVault => Get(nameof(Settings_StorageVault));
+    public static string Settings_BrowseVault => Get(nameof(Settings_BrowseVault));
+    public static string Settings_VaultFolderDialogTitle => Get(nameof(Settings_VaultFolderDialogTitle));
+    public static string Settings_VaultPathRequired => Get(nameof(Settings_VaultPathRequired));
 
     public static string NoteList_WindowTitle => Get(nameof(NoteList_WindowTitle));
     public static string NoteList_Title => Get(nameof(NoteList_Title));
