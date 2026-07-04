@@ -134,6 +134,8 @@ Switch a note between **Text / Markdown / HTML** and it renders on the spot:
 ### Download
 Grab the latest build from the [**Releases**](https://github.com/BaeTab/stickypad_windows/releases) page, unzip, and run `StickyPad.exe`.
 
+> ⚠️ Windows may show a SmartScreen "unknown publisher" warning (the app isn't code‑signed). It's safe — see [Install & verify](docs/INSTALL.md) for why and how to check the SHA‑256 checksum.
+
 Requires the **[.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0)** (x64) unless you use a self‑contained build (see below). The Markdown/HTML preview uses the **[WebView2 runtime](https://developer.microsoft.com/microsoft-edge/webview2/)** — preinstalled on Windows 11 (and most Windows 10).
 
 ### Build from source
