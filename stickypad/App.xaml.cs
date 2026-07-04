@@ -109,6 +109,8 @@ public partial class App : Application
 
         try
         {
+            LocalizationService.ApplyCulture(_host.Services.GetRequiredService<ISettingsService>().Current.Language);
+
             var repo = _host.Services.GetRequiredService<INoteRepository>();
             try
             {

@@ -2,9 +2,10 @@
     x:Class="StickyPad.Views.NotesListWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:res="clr-namespace:StickyPad.Resources"
     xmlns:u="clr-namespace:StickyPad.Utils"
     xmlns:vm="clr-namespace:StickyPad.ViewModels"
-    Title="StickyPad — All notes"
+    Title="{x:Static res:Strings.NoteList_WindowTitle}"
     Width="640"
     Height="540"
     Background="#FAFAFA"
@@ -59,12 +60,12 @@
                 VerticalAlignment="Center"
                 FontSize="20"
                 FontWeight="SemiBold"
-                Text="All notes" />
+                Text="{x:Static res:Strings.NoteList_Title}" />
             <TextBlock
                 Margin="10,0,0,0"
                 VerticalAlignment="Center"
                 Foreground="#666"
-                Text="{Binding TotalCount, StringFormat={}{0} total}" />
+                Text="{Binding TotalCount, StringFormat={x:Static res:Strings.NoteList_TotalFormat}}" />
             <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
                 <Menu
                     Margin="0,0,6,0"
@@ -73,18 +74,18 @@
                     Visibility="{Binding ShowTrash, Converter={StaticResource InverseBoolToVis}}">
                     <MenuItem
                         Padding="10,4"
-                        Header="내보내기 ▾"
-                        ToolTip="선택한 노트(없으면 현재 목록 전체)를 HTML · PDF · Markdown 파일로 내보내기">
-                        <MenuItem Command="{Binding ExportHtmlCommand}" Header="HTML 문서로…" />
-                        <MenuItem Command="{Binding ExportPdfCommand}" Header="PDF로…" />
+                        Header="{x:Static res:Strings.NoteList_Export}"
+                        ToolTip="{x:Static res:Strings.NoteList_ExportTooltip}">
+                        <MenuItem Command="{Binding ExportHtmlCommand}" Header="{x:Static res:Strings.NoteList_ExportHtml}" />
+                        <MenuItem Command="{Binding ExportPdfCommand}" Header="{x:Static res:Strings.NoteList_ExportPdf}" />
                         <Separator />
-                        <MenuItem Command="{Binding ExportMarkdownFilesCommand}" Header="노트별 Markdown 파일로…" />
+                        <MenuItem Command="{Binding ExportMarkdownFilesCommand}" Header="{x:Static res:Strings.NoteList_ExportMarkdownFiles}" />
                     </MenuItem>
                 </Menu>
                 <Button
                     Padding="12,4"
                     Command="{Binding NewNoteCommand}"
-                    Content="+ New note" />
+                    Content="{x:Static res:Strings.NoteList_NewNote}" />
             </StackPanel>
         </DockPanel>
 
@@ -98,22 +99,22 @@
                     Margin="0,0,10,0"
                     VerticalAlignment="Center"
                     Foreground="#666"
-                    Text="{Binding SelectedCount, StringFormat={}{0}개 선택됨}" />
+                    Text="{Binding SelectedCount, StringFormat={x:Static res:Strings.NoteList_SelectedFormat}}" />
                 <Button
                     Margin="0,0,4,0"
                     Padding="8,3"
                     Command="{Binding SelectAllCommand}"
-                    Content="전체 선택"
+                    Content="{x:Static res:Strings.NoteList_SelectAll}"
                     Cursor="Hand" />
                 <Button
                     Padding="8,3"
                     Command="{Binding ClearSelectionCommand}"
-                    Content="선택 해제"
+                    Content="{x:Static res:Strings.NoteList_ClearSelection}"
                     Cursor="Hand" />
             </StackPanel>
 
             <ToggleButton
-                Content="활성"
+                Content="{x:Static res:Strings.NoteList_TabActive}"
                 IsChecked="{Binding ShowTrash, Mode=OneWay, Converter={StaticResource InverseBool}}"
                 Click="ActiveTab_OnClick"
                 Style="{StaticResource TabToggle}" />
@@ -121,7 +122,7 @@
                 IsChecked="{Binding ShowTrash}"
                 Style="{StaticResource TabToggle}">
                 <TextBlock>
-                    <Run Text="휴지통" />
+                    <Run Text="{x:Static res:Strings.NoteList_TabTrash}" />
                     <Run Foreground="#999" Text="{Binding TrashedCount, StringFormat={} ({0})}" />
                 </TextBlock>
             </ToggleButton>
@@ -131,7 +132,7 @@
                 Background="#FBE9E7"
                 BorderThickness="0"
                 Command="{Binding EmptyTrashCommand}"
-                Content="휴지통 비우기"
+                Content="{x:Static res:Strings.NoteList_EmptyTrashButton}"
                 Cursor="Hand"
                 Visibility="{Binding ShowTrash, Converter={StaticResource BoolToVis}}" />
         </DockPanel>
@@ -219,7 +220,7 @@
                                     VerticalAlignment="Center"
                                     Margin="2,0,6,0"
                                     IsChecked="{Binding IsSelected, Mode=TwoWay}"
-                                    ToolTip="내보내기 대상으로 선택"
+                                    ToolTip="{x:Static res:Strings.NoteList_SelectForExportTooltip}"
                                     Visibility="{Binding IsTrashed, Converter={StaticResource InverseBoolToVis}}" />
 
                                 <Rectangle
@@ -266,7 +267,7 @@
                                             FontSize="11"
                                             Foreground="#B85C5C"
                                             HorizontalAlignment="Right"
-                                            Text="{Binding DeletedAt, StringFormat=삭제됨 g}"
+                                            Text="{Binding DeletedAt, StringFormat={x:Static res:Strings.NoteList_DeletedAtFormat}}"
                                             Visibility="{Binding IsTrashed, Converter={StaticResource BoolToVis}}" />
                                     </StackPanel>
 
@@ -275,7 +276,7 @@
                                         Padding="6,1"
                                         Command="{Binding DataContext.DeleteCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                         CommandParameter="{Binding}"
-                                        Content="Delete"
+                                        Content="{x:Static res:Strings.NoteList_Delete}"
                                         Visibility="{Binding IsTrashed, Converter={StaticResource InverseBoolToVis}}" />
 
                                     <!-- 휴지통 카드: 복원 / 영구삭제 -->
@@ -286,7 +287,7 @@
                                         BorderThickness="0"
                                         Command="{Binding DataContext.RestoreCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                         CommandParameter="{Binding}"
-                                        Content="복원"
+                                        Content="{x:Static res:Strings.NoteList_Restore}"
                                         Cursor="Hand"
                                         Visibility="{Binding IsTrashed, Converter={StaticResource BoolToVis}}" />
                                     <Button
@@ -295,7 +296,7 @@
                                         BorderThickness="0"
                                         Command="{Binding DataContext.PurgeCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                         CommandParameter="{Binding}"
-                                        Content="영구삭제"
+                                        Content="{x:Static res:Strings.NoteList_PurgePermanently}"
                                         Cursor="Hand"
                                         Visibility="{Binding IsTrashed, Converter={StaticResource BoolToVis}}" />
                                 </StackPanel>
@@ -319,18 +320,18 @@
             <Button
                 Padding="10,3"
                 Command="{Binding ClearTagCommand}"
-                Content="Clear tag filter"
+                Content="{x:Static res:Strings.NoteList_ClearTagFilter}"
                 IsEnabled="{Binding ActiveTag, Converter={StaticResource NonNullToBool}}" />
             <TextBlock
                 Margin="10,0,0,0"
                 VerticalAlignment="Center"
                 Foreground="#888"
-                Text="{Binding ActiveTag, StringFormat=Tag: #{0}}" />
+                Text="{Binding ActiveTag, StringFormat={x:Static res:Strings.NoteList_TagFilterFormat}}" />
             <TextBlock
                 HorizontalAlignment="Right"
                 VerticalAlignment="Center"
                 Foreground="#888"
-                Text="Ctrl+Shift+L to toggle • Esc to close" />
+                Text="{x:Static res:Strings.NoteList_FooterHint}" />
         </DockPanel>
     </Grid>
 </Window>

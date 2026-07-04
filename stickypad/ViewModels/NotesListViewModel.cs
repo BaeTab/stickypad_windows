@@ -8,6 +8,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 using StickyPad.Models;
+using StickyPad.Resources;
 using StickyPad.Services;
 using StickyPad.Utils;
 
@@ -53,10 +54,10 @@ public sealed partial class NotesListViewModel : ObservableObject
     public bool IsTrashView => ShowTrash;
 
     public string EmptyMessage => ShowTrash
-        ? "휴지통이 비어 있습니다."
+        ? Strings.NoteList_EmptyTrash
         : (string.IsNullOrWhiteSpace(SearchText) && string.IsNullOrEmpty(ActiveTag)
-            ? "아직 노트가 없습니다. 새 노트를 만들어 보세요."
-            : "검색·필터에 일치하는 노트가 없습니다.");
+            ? Strings.NoteList_EmptyNoNotes
+            : Strings.NoteList_EmptyNoMatch);
 
     public NotesListViewModel(INoteRepository repository, IWindowManager windowManager, IBackupService backupService, ILogger<NotesListViewModel> logger)
     {
@@ -143,7 +144,7 @@ public sealed partial class NotesListViewModel : ObservableObject
                 }
             }
 
-            var title = string.IsNullOrWhiteSpace(note.Title) ? "(untitled)" : note.Title;
+            var title = string.IsNullOrWhiteSpace(note.Title) ? Strings.NoteList_Untitled : note.Title;
             var excerpt = TextExtraction.ExcerptOf(note.PlainText);
             var tagsLine = note.Tags.Count == 0 ? string.Empty : "#" + string.Join("  #", note.Tags);
 

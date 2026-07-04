@@ -8,6 +8,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows;
 using Microsoft.Extensions.Logging;
+using StickyPad.Resources;
 
 namespace StickyPad.Services;
 
@@ -49,31 +50,31 @@ public sealed class UpdateService : IUpdateService
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Update check failed");
-                if (userInitiated) Report("업데이트 확인에 실패했습니다.\n네트워크 상태를 확인해 주세요.", MessageBoxImage.Warning);
+                if (userInitiated) Report(Strings.Update_CheckFailed, MessageBoxImage.Warning);
                 return;
             }
 
             if (release?.Version is null)
             {
-                if (userInitiated) Report("업데이트 정보를 읽을 수 없습니다.", MessageBoxImage.Warning);
+                if (userInitiated) Report(Strings.Update_InfoUnreadable, MessageBoxImage.Warning);
                 return;
             }
 
             if (Compare(release.Version, current) <= 0)
             {
                 _logger.LogInformation("Up to date (current {Current}, latest {Latest})", current, release.Tag);
-                if (userInitiated) Report($"이미 최신 버전입니다.  (v{current.Major}.{current.Minor}.{current.Build})", MessageBoxImage.Information);
+                if (userInitiated) Report(string.Format(Strings.Update_UpToDateFormat, current.Major, current.Minor, current.Build), MessageBoxImage.Information);
                 return;
             }
 
             if (string.IsNullOrEmpty(release.DownloadUrl))
             {
                 _logger.LogWarning("Newer release {Tag} has no {Suffix} asset", release.Tag, AssetSuffix);
-                if (userInitiated) Report($"새 버전 {release.Tag} 이(가) 있으나 다운로드 파일을 찾지 못했습니다.", MessageBoxImage.Warning);
+                if (userInitiated) Report(string.Format(Strings.Update_AssetNotFoundFormat, release.Tag), MessageBoxImage.Warning);
                 return;
             }
 
-            var proceed = Ask($"새 버전 {release.Tag} 이(가) 있습니다.\n지금 업데이트할까요?\n\n(다운로드 후 앱이 잠시 재시작됩니다.)");
+            var proceed = Ask(string.Format(Strings.Update_AvailablePromptFormat, release.Tag));
             if (!proceed) return;
 
             await DownloadAndApplyAsync(release).ConfigureAwait(false);
@@ -95,14 +96,14 @@ public sealed class UpdateService : IUpdateService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Update download failed");
-            Report("업데이트 다운로드에 실패했습니다.", MessageBoxImage.Warning);
+            Report(Strings.Update_DownloadFailed, MessageBoxImage.Warning);
             return;
         }
 
         var target = Process.GetCurrentProcess().MainModule?.FileName;
         if (string.IsNullOrEmpty(target))
         {
-            Report("현재 실행 파일 경로를 확인할 수 없어 업데이트를 적용하지 못했습니다.", MessageBoxImage.Warning);
+            Report(Strings.Update_ExecutablePathUnknown, MessageBoxImage.Warning);
             return;
         }
 
@@ -113,7 +114,7 @@ public sealed class UpdateService : IUpdateService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to launch the update helper");
-            Report("업데이트 적용에 실패했습니다.", MessageBoxImage.Warning);
+            Report(Strings.Update_ApplyFailed, MessageBoxImage.Warning);
             return;
         }
 
@@ -196,7 +197,7 @@ public sealed class UpdateService : IUpdateService
 
     private static bool Ask(string message) =>
         Application.Current.Dispatcher.Invoke(() =>
-            MessageBox.Show(message, "StickyPad 업데이트", MessageBoxButton.OKCancel, MessageBoxImage.Question)
+            MessageBox.Show(message, Strings.Update_ConfirmCaption, MessageBoxButton.OKCancel, MessageBoxImage.Question)
             == MessageBoxResult.OK);
 
     internal sealed record ReleaseInfo(string Tag, Version? Version, string? DownloadUrl);

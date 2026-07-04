@@ -1,0 +1,158 @@
+using System.Globalization;
+using System.Resources;
+
+namespace StickyPad.Resources;
+
+/// 리소스 문자열 접근자. dotnet build 는 디자이너를 생성하지 않으므로 수동 작성.
+public static class Strings
+{
+    private static readonly ResourceManager Rm = new("StickyPad.Resources.Strings", typeof(Strings).Assembly);
+    public static string Get(string key) => Rm.GetString(key, CultureInfo.CurrentUICulture) ?? key;
+
+    public static string Common_Save => Get(nameof(Common_Save));
+    public static string Common_Cancel => Get(nameof(Common_Cancel));
+
+    public static string Settings_Title => Get(nameof(Settings_Title));
+    public static string Settings_WindowTitle => Get(nameof(Settings_WindowTitle));
+    public static string Settings_AutoStart => Get(nameof(Settings_AutoStart));
+    public static string Settings_AutoUpdate => Get(nameof(Settings_AutoUpdate));
+    public static string Settings_GlobalHotkeys => Get(nameof(Settings_GlobalHotkeys));
+    public static string Settings_NewNoteLabel => Get(nameof(Settings_NewNoteLabel));
+    public static string Settings_NotesListLabel => Get(nameof(Settings_NotesListLabel));
+    public static string Settings_HotkeyHint => Get(nameof(Settings_HotkeyHint));
+    public static string Settings_Language => Get(nameof(Settings_Language));
+    public static string Settings_LanguageSystem => Get(nameof(Settings_LanguageSystem));
+    public static string Settings_RestartNote => Get(nameof(Settings_RestartNote));
+    public static string Settings_HotkeyInvalidNewNote => Get(nameof(Settings_HotkeyInvalidNewNote));
+    public static string Settings_HotkeyInvalidList => Get(nameof(Settings_HotkeyInvalidList));
+
+    public static string NoteList_WindowTitle => Get(nameof(NoteList_WindowTitle));
+    public static string NoteList_Title => Get(nameof(NoteList_Title));
+    public static string NoteList_TotalFormat => Get(nameof(NoteList_TotalFormat));
+    public static string NoteList_Export => Get(nameof(NoteList_Export));
+    public static string NoteList_ExportTooltip => Get(nameof(NoteList_ExportTooltip));
+    public static string NoteList_ExportHtml => Get(nameof(NoteList_ExportHtml));
+    public static string NoteList_ExportPdf => Get(nameof(NoteList_ExportPdf));
+    public static string NoteList_ExportMarkdownFiles => Get(nameof(NoteList_ExportMarkdownFiles));
+    public static string NoteList_NewNote => Get(nameof(NoteList_NewNote));
+    public static string NoteList_SelectedFormat => Get(nameof(NoteList_SelectedFormat));
+    public static string NoteList_SelectAll => Get(nameof(NoteList_SelectAll));
+    public static string NoteList_ClearSelection => Get(nameof(NoteList_ClearSelection));
+    public static string NoteList_TabActive => Get(nameof(NoteList_TabActive));
+    public static string NoteList_TabTrash => Get(nameof(NoteList_TabTrash));
+    public static string NoteList_EmptyTrashButton => Get(nameof(NoteList_EmptyTrashButton));
+    public static string NoteList_SelectForExportTooltip => Get(nameof(NoteList_SelectForExportTooltip));
+    public static string NoteList_Delete => Get(nameof(NoteList_Delete));
+    public static string NoteList_Restore => Get(nameof(NoteList_Restore));
+    public static string NoteList_PurgePermanently => Get(nameof(NoteList_PurgePermanently));
+    public static string NoteList_DeletedAtFormat => Get(nameof(NoteList_DeletedAtFormat));
+    public static string NoteList_ClearTagFilter => Get(nameof(NoteList_ClearTagFilter));
+    public static string NoteList_TagFilterFormat => Get(nameof(NoteList_TagFilterFormat));
+    public static string NoteList_FooterHint => Get(nameof(NoteList_FooterHint));
+    public static string NoteList_EmptyTrash => Get(nameof(NoteList_EmptyTrash));
+    public static string NoteList_EmptyNoNotes => Get(nameof(NoteList_EmptyNoNotes));
+    public static string NoteList_EmptyNoMatch => Get(nameof(NoteList_EmptyNoMatch));
+    public static string NoteList_Untitled => Get(nameof(NoteList_Untitled));
+
+    public static string Tray_Tooltip => Get(nameof(Tray_Tooltip));
+    public static string Tray_NewNote => Get(nameof(Tray_NewNote));
+    public static string Tray_OpenMarkdownFile => Get(nameof(Tray_OpenMarkdownFile));
+    public static string Tray_OpenMarkdownDialogTitle => Get(nameof(Tray_OpenMarkdownDialogTitle));
+    public static string Tray_AllNotes => Get(nameof(Tray_AllNotes));
+    public static string Tray_Settings => Get(nameof(Tray_Settings));
+    public static string Tray_ShowAll => Get(nameof(Tray_ShowAll));
+    public static string Tray_HideAll => Get(nameof(Tray_HideAll));
+    public static string Tray_ExportBackup => Get(nameof(Tray_ExportBackup));
+    public static string Tray_ImportBackup => Get(nameof(Tray_ImportBackup));
+    public static string Tray_ExportNotesAsText => Get(nameof(Tray_ExportNotesAsText));
+    public static string Tray_CheckForUpdates => Get(nameof(Tray_CheckForUpdates));
+    public static string Tray_Exit => Get(nameof(Tray_Exit));
+
+    public static string Note_WindowTitle => Get(nameof(Note_WindowTitle));
+    public static string Note_ChangeColor => Get(nameof(Note_ChangeColor));
+    public static string Note_ModeText => Get(nameof(Note_ModeText));
+    public static string Note_ModeMarkdown => Get(nameof(Note_ModeMarkdown));
+    public static string Note_ModeHtml => Get(nameof(Note_ModeHtml));
+    public static string Note_PreviewToggle => Get(nameof(Note_PreviewToggle));
+    public static string Note_AlwaysOnTop => Get(nameof(Note_AlwaysOnTop));
+    public static string Note_OpenFile => Get(nameof(Note_OpenFile));
+    public static string Note_NewNote => Get(nameof(Note_NewNote));
+    public static string Note_AllNotes => Get(nameof(Note_AllNotes));
+    public static string Note_ExportPrintTooltip => Get(nameof(Note_ExportPrintTooltip));
+    public static string Note_ExportPdfMenu => Get(nameof(Note_ExportPdfMenu));
+    public static string Note_ExportHtmlMenu => Get(nameof(Note_ExportHtmlMenu));
+    public static string Note_ExportMarkdownMenu => Get(nameof(Note_ExportMarkdownMenu));
+    public static string Note_PrintMenu => Get(nameof(Note_PrintMenu));
+    public static string Note_DeleteNote => Get(nameof(Note_DeleteNote));
+    public static string Note_HideSaves => Get(nameof(Note_HideSaves));
+    public static string Note_Opacity => Get(nameof(Note_Opacity));
+    public static string Note_FontSize => Get(nameof(Note_FontSize));
+    public static string Note_Bold => Get(nameof(Note_Bold));
+    public static string Note_Italic => Get(nameof(Note_Italic));
+    public static string Note_Underline => Get(nameof(Note_Underline));
+    public static string Note_Strikethrough => Get(nameof(Note_Strikethrough));
+    public static string Note_AlignLeft => Get(nameof(Note_AlignLeft));
+    public static string Note_AlignCenter => Get(nameof(Note_AlignCenter));
+    public static string Note_AlignRight => Get(nameof(Note_AlignRight));
+    public static string Note_BulletedList => Get(nameof(Note_BulletedList));
+    public static string Note_NumberedList => Get(nameof(Note_NumberedList));
+    public static string Note_InsertTask => Get(nameof(Note_InsertTask));
+    public static string Note_InlineCode => Get(nameof(Note_InlineCode));
+    public static string Note_CodeBlock => Get(nameof(Note_CodeBlock));
+    public static string Note_ClearFormatting => Get(nameof(Note_ClearFormatting));
+    public static string Note_OpenFileError => Get(nameof(Note_OpenFileError));
+    public static string Note_FileChangedPrompt => Get(nameof(Note_FileChangedPrompt));
+    public static string Note_FileChangedTitle => Get(nameof(Note_FileChangedTitle));
+    public static string Note_PreviewError => Get(nameof(Note_PreviewError));
+    public static string Note_DeleteLinkedConfirm => Get(nameof(Note_DeleteLinkedConfirm));
+    public static string Note_DeleteConfirm => Get(nameof(Note_DeleteConfirm));
+    public static string Note_OpenLinkError => Get(nameof(Note_OpenLinkError));
+    public static string Note_NoteNotFound => Get(nameof(Note_NoteNotFound));
+    public static string Note_ExportError => Get(nameof(Note_ExportError));
+    public static string Note_PrintError => Get(nameof(Note_PrintError));
+    public static string Note_FileNotFoundFormat => Get(nameof(Note_FileNotFoundFormat));
+
+    public static string Export_DocumentTitle => Get(nameof(Export_DocumentTitle));
+    public static string Export_MetaFormat => Get(nameof(Export_MetaFormat));
+    public static string Export_HtmlFilter => Get(nameof(Export_HtmlFilter));
+    public static string Export_HtmlDialogTitle => Get(nameof(Export_HtmlDialogTitle));
+    public static string Export_HtmlFailedFormat => Get(nameof(Export_HtmlFailedFormat));
+    public static string Export_HtmlSavedFormat => Get(nameof(Export_HtmlSavedFormat));
+    public static string Export_PdfFilter => Get(nameof(Export_PdfFilter));
+    public static string Export_PdfDialogTitle => Get(nameof(Export_PdfDialogTitle));
+    public static string Export_PdfFailedFormat => Get(nameof(Export_PdfFailedFormat));
+    public static string Export_PdfSavedFormat => Get(nameof(Export_PdfSavedFormat));
+    public static string Export_MarkdownFilter => Get(nameof(Export_MarkdownFilter));
+    public static string Export_MarkdownDialogTitle => Get(nameof(Export_MarkdownDialogTitle));
+    public static string Export_MarkdownFailedFormat => Get(nameof(Export_MarkdownFailedFormat));
+    public static string Export_MarkdownSavedFormat => Get(nameof(Export_MarkdownSavedFormat));
+
+    public static string Backup_NoNotesToExport => Get(nameof(Backup_NoNotesToExport));
+    public static string Backup_ChooseExportFolderTitle => Get(nameof(Backup_ChooseExportFolderTitle));
+    public static string Backup_MarkdownFilesExportedFormat => Get(nameof(Backup_MarkdownFilesExportedFormat));
+    public static string Backup_MarkdownFilesPartialFailureFormat => Get(nameof(Backup_MarkdownFilesPartialFailureFormat));
+    public static string Backup_HtmlExportedFormat => Get(nameof(Backup_HtmlExportedFormat));
+    public static string Backup_PdfExportedFormat => Get(nameof(Backup_PdfExportedFormat));
+    public static string Backup_JsonFilter => Get(nameof(Backup_JsonFilter));
+    public static string Backup_ExportDialogTitle => Get(nameof(Backup_ExportDialogTitle));
+    public static string Backup_TextExportFilter => Get(nameof(Backup_TextExportFilter));
+    public static string Backup_TextExportDialogTitle => Get(nameof(Backup_TextExportDialogTitle));
+    public static string Backup_JsonImportFilter => Get(nameof(Backup_JsonImportFilter));
+    public static string Backup_ImportDialogTitle => Get(nameof(Backup_ImportDialogTitle));
+    public static string Backup_ReadFailedFormat => Get(nameof(Backup_ReadFailedFormat));
+    public static string Backup_NoNotesInFile => Get(nameof(Backup_NoNotesInFile));
+    public static string Backup_ImportConfirmFormat => Get(nameof(Backup_ImportConfirmFormat));
+
+    public static string Print_WindowTitle => Get(nameof(Print_WindowTitle));
+    public static string Print_PrepareFailedFormat => Get(nameof(Print_PrepareFailedFormat));
+
+    public static string Update_CheckFailed => Get(nameof(Update_CheckFailed));
+    public static string Update_InfoUnreadable => Get(nameof(Update_InfoUnreadable));
+    public static string Update_UpToDateFormat => Get(nameof(Update_UpToDateFormat));
+    public static string Update_AssetNotFoundFormat => Get(nameof(Update_AssetNotFoundFormat));
+    public static string Update_AvailablePromptFormat => Get(nameof(Update_AvailablePromptFormat));
+    public static string Update_ConfirmCaption => Get(nameof(Update_ConfirmCaption));
+    public static string Update_DownloadFailed => Get(nameof(Update_DownloadFailed));
+    public static string Update_ExecutablePathUnknown => Get(nameof(Update_ExecutablePathUnknown));
+    public static string Update_ApplyFailed => Get(nameof(Update_ApplyFailed));
+}

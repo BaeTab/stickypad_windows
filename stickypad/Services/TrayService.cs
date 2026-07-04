@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using H.NotifyIcon;
 using Microsoft.Extensions.Logging;
+using StickyPad.Resources;
 using StickyPad.Utils;
 
 namespace StickyPad.Services;
@@ -43,7 +44,7 @@ public sealed class TrayService : ITrayService
                 // 환경에 따라 디스패처에 unhandled 예외를 흘려 트레이가 빈 채로 남는
                 // 사례가 있어, System.Drawing.Icon 을 직접 할당하는 동기 경로를 사용한다.
                 Icon = IconFactory.CreateTrayIcon(16),
-                ToolTipText = "StickyPad",
+                ToolTipText = Strings.Tray_Tooltip,
                 NoLeftClickDelay = true,
             };
             _icon.LeftClickCommand = new DelegateCommand(_ => _windowManager.ToggleAllVisible());
@@ -66,47 +67,47 @@ public sealed class TrayService : ITrayService
     {
         var menu = new ContextMenu();
 
-        menu.Items.Add(MenuItem("New note  (Ctrl+Shift+N)", () => _windowManager.CreateAndShowNew()));
-        menu.Items.Add(MenuItem("Open markdown file…", OpenMarkdownFile));
-        menu.Items.Add(MenuItem("All notes…  (Ctrl+Shift+L)", () => _windowManager.OpenNotesList()));
-        menu.Items.Add(MenuItem("Settings…", () => _windowManager.OpenSettings()));
+        menu.Items.Add(MenuItem(Strings.Tray_NewNote, () => _windowManager.CreateAndShowNew()));
+        menu.Items.Add(MenuItem(Strings.Tray_OpenMarkdownFile, OpenMarkdownFile));
+        menu.Items.Add(MenuItem(Strings.Tray_AllNotes, () => _windowManager.OpenNotesList()));
+        menu.Items.Add(MenuItem(Strings.Tray_Settings, () => _windowManager.OpenSettings()));
         menu.Items.Add(new Separator());
-        menu.Items.Add(MenuItem("Show all", () => _windowManager.ShowAll()));
-        menu.Items.Add(MenuItem("Hide all", () => _windowManager.HideAll()));
+        menu.Items.Add(MenuItem(Strings.Tray_ShowAll, () => _windowManager.ShowAll()));
+        menu.Items.Add(MenuItem(Strings.Tray_HideAll, () => _windowManager.HideAll()));
         menu.Items.Add(new Separator());
 
         _autoStartMenu = new MenuItem
         {
-            Header = "Start with Windows",
+            Header = Strings.Settings_AutoStart,
             IsCheckable = true,
             IsChecked = _autoStartService.IsEnabled,
         };
         _autoStartMenu.Click += (_, _) => _autoStartService.SetEnabled(_autoStartMenu.IsChecked);
         menu.Items.Add(_autoStartMenu);
 
-        menu.Items.Add(MenuItem("Export backup…", async () =>
+        menu.Items.Add(MenuItem(Strings.Tray_ExportBackup, async () =>
         {
             try { await _backupService.ExportInteractiveAsync(); }
             catch (Exception ex) { _logger.LogError(ex, "Export failed"); }
         }));
-        menu.Items.Add(MenuItem("Import backup…", async () =>
+        menu.Items.Add(MenuItem(Strings.Tray_ImportBackup, async () =>
         {
             try { await _backupService.ImportInteractiveAsync(); }
             catch (Exception ex) { _logger.LogError(ex, "Import failed"); }
         }));
-        menu.Items.Add(MenuItem("Export notes as text…", async () =>
+        menu.Items.Add(MenuItem(Strings.Tray_ExportNotesAsText, async () =>
         {
             try { await _backupService.ExportNotesAsTextAsync(); }
             catch (Exception ex) { _logger.LogError(ex, "Text export failed"); }
         }));
 
         menu.Items.Add(new Separator());
-        menu.Items.Add(MenuItem("Check for updates…", async () =>
+        menu.Items.Add(MenuItem(Strings.Tray_CheckForUpdates, async () =>
         {
             try { await _updateService.CheckAsync(userInitiated: true); }
             catch (Exception ex) { _logger.LogError(ex, "Update check failed"); }
         }));
-        menu.Items.Add(MenuItem("Exit", () => Application.Current.Shutdown()));
+        menu.Items.Add(MenuItem(Strings.Tray_Exit, () => Application.Current.Shutdown()));
 
         menu.Opened += (_, _) =>
         {
@@ -124,7 +125,7 @@ public sealed class TrayService : ITrayService
         var dlg = new Microsoft.Win32.OpenFileDialog
         {
             Filter = Utils.LinkedFile.OpenDialogFilter,
-            Title = "Markdown / 텍스트 파일 열기",
+            Title = Strings.Tray_OpenMarkdownDialogTitle,
         };
         if (dlg.ShowDialog() != true) return;
         try { await _windowManager.OpenFileAsync(dlg.FileName); }

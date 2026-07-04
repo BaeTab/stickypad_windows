@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using StickyPad.Resources;
 using StickyPad.Services;
 using StickyPad.Utils;
 
@@ -12,6 +14,9 @@ public sealed partial class SettingsViewModel : ObservableObject
     private readonly ISettingsService _settings;
     private readonly IHotkeyService _hotkeys;
     private readonly IAutoStartService _autoStart;
+
+    /// 언어 선택 콤보박스 항목: 값(설정에 저장되는 코드)과 표시 라벨.
+    public sealed record LanguageOption(string Value, string Label);
 
     [ObservableProperty]
     private bool _autoStartWithWindows;
@@ -29,7 +34,17 @@ public sealed partial class SettingsViewModel : ObservableObject
     private bool _autoCheckForUpdates;
 
     [ObservableProperty]
+    private string _selectedLanguage;
+
+    [ObservableProperty]
     private string? _validationError;
+
+    public IReadOnlyList<LanguageOption> LanguageOptions { get; } =
+    [
+        new LanguageOption("system", Strings.Settings_LanguageSystem),
+        new LanguageOption("ko", "한국어"),
+        new LanguageOption("en", "English"),
+    ];
 
     /// Raised after a successful save so the hosting window can close itself.
     public event EventHandler? Saved;
@@ -47,6 +62,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         _newNoteHotkey = current.NewNoteHotkey;
         _notesListHotkey = current.NotesListHotkey;
         _autoCheckForUpdates = current.AutoCheckForUpdates;
+        _selectedLanguage = current.Language;
     }
 
     [RelayCommand]
@@ -56,12 +72,12 @@ public sealed partial class SettingsViewModel : ObservableObject
         {
             if (!HotkeyGesture.TryParse(NewNoteHotkey, out _, out _))
             {
-                ValidationError = "새 노트 단축키가 올바르지 않습니다 (수정키 + 키 조합 필요).";
+                ValidationError = Strings.Settings_HotkeyInvalidNewNote;
                 return;
             }
             if (!HotkeyGesture.TryParse(NotesListHotkey, out _, out _))
             {
-                ValidationError = "전체 목록 단축키가 올바르지 않습니다 (수정키 + 키 조합 필요).";
+                ValidationError = Strings.Settings_HotkeyInvalidList;
                 return;
             }
         }
@@ -73,6 +89,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         current.NotesListHotkey = NotesListHotkey;
         current.AutoStartWithWindows = AutoStartWithWindows;
         current.AutoCheckForUpdates = AutoCheckForUpdates;
+        current.Language = SelectedLanguage;
         await _settings.SaveAsync().ConfigureAwait(true);
 
         _autoStart.SetEnabled(AutoStartWithWindows);

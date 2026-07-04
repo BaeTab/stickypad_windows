@@ -3,9 +3,10 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:m="clr-namespace:StickyPad.Models"
+    xmlns:res="clr-namespace:StickyPad.Resources"
     xmlns:u="clr-namespace:StickyPad.Utils"
     xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
-    Title="Sticky"
+    Title="{x:Static res:Strings.Note_WindowTitle}"
     MinWidth="220"
     MinHeight="180"
     AllowDrop="True"
@@ -140,7 +141,7 @@
                         Padding="0"
                         Cursor="Hand"
                         FocusVisualStyle="{x:Null}"
-                        ToolTip="Change color">
+                        ToolTip="{x:Static res:Strings.Note_ChangeColor}">
                         <ToggleButton.Template>
                             <ControlTemplate TargetType="ToggleButton">
                                 <Ellipse
@@ -219,7 +220,7 @@
                             Cursor="Hand"
                             Style="{StaticResource FormatToggle}"
                             Tag="Rich"
-                            ToolTip="Text (rich)"
+                            ToolTip="{x:Static res:Strings.Note_ModeText}"
                             Content="T" />
                         <ToggleButton
                             x:Name="ModeMarkdownToggle"
@@ -227,7 +228,7 @@
                             Cursor="Hand"
                             Style="{StaticResource FormatToggle}"
                             Tag="Markdown"
-                            ToolTip="Markdown"
+                            ToolTip="{x:Static res:Strings.Note_ModeMarkdown}"
                             Content="M" />
                         <ToggleButton
                             x:Name="ModeHtmlToggle"
@@ -235,61 +236,61 @@
                             Cursor="Hand"
                             Style="{StaticResource FormatToggle}"
                             Tag="Html"
-                            ToolTip="HTML"
+                            ToolTip="{x:Static res:Strings.Note_ModeHtml}"
                             Content="&lt;/&gt;" />
                         <Border Style="{StaticResource VerticalSeparator}" />
                         <ToggleButton
                             Cursor="Hand"
                             IsChecked="{Binding IsPreviewMode}"
                             Style="{StaticResource FormatToggle}"
-                            ToolTip="Preview / Edit (Ctrl+E)"
+                            ToolTip="{x:Static res:Strings.Note_PreviewToggle}"
                             Content="Eye" />
                         <ToggleButton
                             Cursor="Hand"
                             IsChecked="{Binding IsAlwaysOnTop}"
                             Style="{StaticResource FormatToggle}"
-                            ToolTip="Always on top"
+                            ToolTip="{x:Static res:Strings.Note_AlwaysOnTop}"
                             Content="Pin" />
                         <Button
                             Click="OpenFileButton_OnClick"
                             Style="{StaticResource ChromeButton}"
-                            ToolTip="Open .md / text file (Ctrl+O)"
+                            ToolTip="{x:Static res:Strings.Note_OpenFile}"
                             Content="📂" />
                         <Button
                             Click="NewButton_OnClick"
                             Style="{StaticResource ChromeButton}"
-                            ToolTip="New note (Ctrl+Shift+N)"
+                            ToolTip="{x:Static res:Strings.Note_NewNote}"
                             Content="+" />
                         <Button
                             Click="ListButton_OnClick"
                             Style="{StaticResource ChromeButton}"
-                            ToolTip="All notes (Ctrl+Shift+L)"
+                            ToolTip="{x:Static res:Strings.Note_AllNotes}"
                             Content="≡" />
                         <Button
                             Style="{StaticResource ChromeButton}"
-                            ToolTip="내보내기 · 인쇄"
+                            ToolTip="{x:Static res:Strings.Note_ExportPrintTooltip}"
                             Click="ExportMenu_OnClick"
                             Content="⤓">
                             <Button.ContextMenu>
                                 <ContextMenu>
-                                    <MenuItem Header="PDF로 저장…" Click="ExportNotePdf_OnClick" />
-                                    <MenuItem Header="HTML로 저장…" Click="ExportNoteHtml_OnClick" />
-                                    <MenuItem Header="Markdown으로 저장…" Click="ExportNoteMarkdown_OnClick" />
+                                    <MenuItem Header="{x:Static res:Strings.Note_ExportPdfMenu}" Click="ExportNotePdf_OnClick" />
+                                    <MenuItem Header="{x:Static res:Strings.Note_ExportHtmlMenu}" Click="ExportNoteHtml_OnClick" />
+                                    <MenuItem Header="{x:Static res:Strings.Note_ExportMarkdownMenu}" Click="ExportNoteMarkdown_OnClick" />
                                     <Separator />
-                                    <MenuItem Header="인쇄…" Click="PrintNote_OnClick" />
+                                    <MenuItem Header="{x:Static res:Strings.Note_PrintMenu}" Click="PrintNote_OnClick" />
                                 </ContextMenu>
                             </Button.ContextMenu>
                         </Button>
                         <Button
                             Click="DeleteButton_OnClick"
                             Style="{StaticResource ChromeButton}"
-                            ToolTip="Delete note"
+                            ToolTip="{x:Static res:Strings.Note_DeleteNote}"
                             Content="Del" />
                         <Button
                             Margin="0,0,4,0"
                             Click="CloseButton_OnClick"
                             Style="{StaticResource ChromeButton}"
-                            ToolTip="Hide (saves)"
+                            ToolTip="{x:Static res:Strings.Note_HideSaves}"
                             Content="x" />
                     </StackPanel>
                 </Grid>
@@ -344,7 +345,7 @@
                             Maximum="1.0"
                             Minimum="0.5"
                             SmallChange="0.05"
-                            ToolTip="Opacity"
+                            ToolTip="{x:Static res:Strings.Note_Opacity}"
                             Value="{Binding Opacity, Mode=TwoWay}" />
                     </StackPanel>
 
@@ -357,7 +358,7 @@
                             FontSize="12"
                             ItemsSource="{Binding FontSizeChoices, RelativeSource={RelativeSource AncestorType=Window}}"
                             SelectionChanged="FontSizeCombo_OnSelectionChanged"
-                            ToolTip="Font size" />
+                            ToolTip="{x:Static res:Strings.Note_FontSize}" />
 
                         <Border Style="{StaticResource VerticalSeparator}" />
 
@@ -366,27 +367,27 @@
                             Click="BoldToggle_OnClick"
                             FontWeight="Bold"
                             Style="{StaticResource FormatToggle}"
-                            ToolTip="Bold (Ctrl+B)"
+                            ToolTip="{x:Static res:Strings.Note_Bold}"
                             Content="B" />
                         <ToggleButton
                             x:Name="ItalicToggle"
                             Click="ItalicToggle_OnClick"
                             FontStyle="Italic"
                             Style="{StaticResource FormatToggle}"
-                            ToolTip="Italic (Ctrl+I)"
+                            ToolTip="{x:Static res:Strings.Note_Italic}"
                             Content="I" />
                         <ToggleButton
                             x:Name="UnderlineToggle"
                             Click="UnderlineToggle_OnClick"
                             Style="{StaticResource FormatToggle}"
-                            ToolTip="Underline (Ctrl+U)">
+                            ToolTip="{x:Static res:Strings.Note_Underline}">
                             <TextBlock Text="U" TextDecorations="Underline" />
                         </ToggleButton>
                         <ToggleButton
                             x:Name="StrikeToggle"
                             Click="StrikeToggle_OnClick"
                             Style="{StaticResource FormatToggle}"
-                            ToolTip="Strikethrough (Ctrl+Shift+X)">
+                            ToolTip="{x:Static res:Strings.Note_Strikethrough}">
                             <TextBlock Text="S" TextDecorations="Strikethrough" />
                         </ToggleButton>
 
@@ -396,19 +397,19 @@
                             x:Name="AlignLeftToggle"
                             Click="AlignLeftToggle_OnClick"
                             Style="{StaticResource FormatToggle}"
-                            ToolTip="Align left (Ctrl+L)"
+                            ToolTip="{x:Static res:Strings.Note_AlignLeft}"
                             Content="◧" />
                         <ToggleButton
                             x:Name="AlignCenterToggle"
                             Click="AlignCenterToggle_OnClick"
                             Style="{StaticResource FormatToggle}"
-                            ToolTip="Align center (Ctrl+E)"
+                            ToolTip="{x:Static res:Strings.Note_AlignCenter}"
                             Content="≡" />
                         <ToggleButton
                             x:Name="AlignRightToggle"
                             Click="AlignRightToggle_OnClick"
                             Style="{StaticResource FormatToggle}"
-                            ToolTip="Align right (Ctrl+R)"
+                            ToolTip="{x:Static res:Strings.Note_AlignRight}"
                             Content="◨" />
 
                         <Border Style="{StaticResource VerticalSeparator}" />
@@ -417,33 +418,33 @@
                             x:Name="BulletsToggle"
                             Click="BulletsToggle_OnClick"
                             Style="{StaticResource FormatToggle}"
-                            ToolTip="Bulleted list"
+                            ToolTip="{x:Static res:Strings.Note_BulletedList}"
                             Content="•" />
                         <ToggleButton
                             x:Name="NumberingToggle"
                             Click="NumberingToggle_OnClick"
                             Style="{StaticResource FormatToggle}"
-                            ToolTip="Numbered list"
+                            ToolTip="{x:Static res:Strings.Note_NumberedList}"
                             Content="1." />
                         <Button
                             Click="TaskItem_OnClick"
                             Style="{StaticResource ChromeButton}"
-                            ToolTip="Insert task (☐)"
+                            ToolTip="{x:Static res:Strings.Note_InsertTask}"
                             Content="☐" />
                         <Button
                             Click="InlineCode_OnClick"
                             Style="{StaticResource ChromeButton}"
-                            ToolTip="Inline code (Ctrl+`)"
+                            ToolTip="{x:Static res:Strings.Note_InlineCode}"
                             Content="&lt;/&gt;" />
                         <Button
                             Click="CodeBlock_OnClick"
                             Style="{StaticResource ChromeButton}"
-                            ToolTip="Code block"
+                            ToolTip="{x:Static res:Strings.Note_CodeBlock}"
                             Content="{}{ }" />
                         <Button
                             Click="ClearFormatting_OnClick"
                             Style="{StaticResource ChromeButton}"
-                            ToolTip="Clear formatting"
+                            ToolTip="{x:Static res:Strings.Note_ClearFormatting}"
                             Content="Tx" />
                     </StackPanel>
                 </DockPanel>

@@ -11,6 +11,7 @@ using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
 using Microsoft.Win32;
 using StickyPad.Models;
+using StickyPad.Resources;
 using StickyPad.Utils;
 
 namespace StickyPad.Services;
@@ -34,9 +35,9 @@ public sealed class BackupService : IBackupService
     {
         var dlg = new SaveFileDialog
         {
-            Filter = "StickyPad backup (*.json)|*.json",
+            Filter = Strings.Backup_JsonFilter,
             FileName = $"stickypad-{DateTime.Now:yyyyMMdd-HHmmss}.json",
-            Title = "Export StickyPad backup",
+            Title = Strings.Backup_ExportDialogTitle,
         };
         if (dlg.ShowDialog() != true) return;
 
@@ -51,9 +52,9 @@ public sealed class BackupService : IBackupService
     {
         var dlg = new SaveFileDialog
         {
-            Filter = "Markdown (*.md)|*.md|Text file (*.txt)|*.txt",
+            Filter = Strings.Backup_TextExportFilter,
             FileName = $"stickypad-notes-{DateTime.Now:yyyyMMdd-HHmmss}.md",
-            Title = "Export notes as text",
+            Title = Strings.Backup_TextExportDialogTitle,
         };
         if (dlg.ShowDialog() != true) return;
 
@@ -104,7 +105,7 @@ public sealed class BackupService : IBackupService
         var notes = noteIds.Where(byId.ContainsKey).Select(id => byId[id]).ToList();
         if (notes.Count == 0)
         {
-            MessageBox.Show("내보낼 노트를 찾을 수 없습니다.", "StickyPad",
+            MessageBox.Show(Strings.Backup_NoNotesToExport, "StickyPad",
                 MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
@@ -119,7 +120,7 @@ public sealed class BackupService : IBackupService
 
     private async Task ExportAsMarkdownFilesAsync(IReadOnlyList<Note> notes)
     {
-        var dlg = new OpenFolderDialog { Title = "노트를 저장할 폴더 선택" };
+        var dlg = new OpenFolderDialog { Title = Strings.Backup_ChooseExportFolderTitle };
         if (dlg.ShowDialog() != true) return;
         var folder = dlg.FolderName;
 
@@ -159,14 +160,14 @@ public sealed class BackupService : IBackupService
         _logger.LogInformation("Exported {Count}/{Total} notes as .md files to {Folder}", count, notes.Count, folder);
         if (failures.Count == 0)
         {
-            MessageBox.Show($"{count}개 노트를 Markdown 파일로 저장했습니다.\n{folder}", "StickyPad",
+            MessageBox.Show(string.Format(Strings.Backup_MarkdownFilesExportedFormat, count, folder), "StickyPad",
                 MessageBoxButton.OK, MessageBoxImage.Information);
         }
         else
         {
             var list = string.Join(", ", failures.Take(5)) + (failures.Count > 5 ? " …" : "");
             MessageBox.Show(
-                $"{count}개 저장 완료, {failures.Count}개 실패했습니다.\n실패한 파일: {list}",
+                string.Format(Strings.Backup_MarkdownFilesPartialFailureFormat, count, failures.Count, list),
                 "StickyPad", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
@@ -175,24 +176,24 @@ public sealed class BackupService : IBackupService
     {
         var dlg = new SaveFileDialog
         {
-            Filter = "HTML 문서 (*.html)|*.html",
+            Filter = Strings.Export_HtmlFilter,
             FileName = $"stickypad-notes-{DateTime.Now:yyyyMMdd-HHmmss}.html",
-            Title = "HTML로 내보내기",
+            Title = Strings.Export_HtmlDialogTitle,
         };
         if (dlg.ShowDialog() != true) return;
 
-        var html = HtmlRenderer.RenderDocument(notes, "StickyPad 노트");
+        var html = HtmlRenderer.RenderDocument(notes, Strings.Export_DocumentTitle);
         try
         {
             await File.WriteAllTextAsync(dlg.FileName, html).ConfigureAwait(true);
             _logger.LogInformation("Exported {Count} notes as HTML to {Path}", notes.Count, dlg.FileName);
-            MessageBox.Show($"{notes.Count}개 노트를 HTML로 저장했습니다.\n{dlg.FileName}", "StickyPad",
+            MessageBox.Show(string.Format(Strings.Backup_HtmlExportedFormat, notes.Count, dlg.FileName), "StickyPad",
                 MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "HTML export failed");
-            MessageBox.Show("HTML로 내보내기에 실패했습니다.\n\n" + ex.Message, "StickyPad",
+            MessageBox.Show(string.Format(Strings.Export_HtmlFailedFormat, ex.Message), "StickyPad",
                 MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
@@ -201,25 +202,25 @@ public sealed class BackupService : IBackupService
     {
         var dlg = new SaveFileDialog
         {
-            Filter = "PDF 문서 (*.pdf)|*.pdf",
+            Filter = Strings.Export_PdfFilter,
             FileName = $"stickypad-notes-{DateTime.Now:yyyyMMdd-HHmmss}.pdf",
-            Title = "PDF로 내보내기",
+            Title = Strings.Export_PdfDialogTitle,
         };
         if (dlg.ShowDialog() != true) return;
 
-        var html = HtmlRenderer.RenderDocument(notes, "StickyPad 노트");
+        var html = HtmlRenderer.RenderDocument(notes, Strings.Export_DocumentTitle);
         try
         {
             await PdfRenderer.RenderAsync(html, dlg.FileName).ConfigureAwait(true);
             _logger.LogInformation("Exported {Count} notes as PDF to {Path}", notes.Count, dlg.FileName);
-            MessageBox.Show($"{notes.Count}개 노트를 PDF로 저장했습니다.\n{dlg.FileName}", "StickyPad",
+            MessageBox.Show(string.Format(Strings.Backup_PdfExportedFormat, notes.Count, dlg.FileName), "StickyPad",
                 MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "PDF export failed");
             MessageBox.Show(
-                "PDF로 내보내기에 실패했습니다. WebView2 런타임이 설치돼 있는지 확인해 주세요.\n\n" + ex.Message,
+                string.Format(Strings.Export_PdfFailedFormat, ex.Message),
                 "StickyPad", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
@@ -227,7 +228,7 @@ public sealed class BackupService : IBackupService
     public async Task ExportSingleNoteAsync(Note note, ExportFormat format)
     {
         var safe = ExportNaming.SafeFileName(note.Title);
-        var docTitle = string.IsNullOrWhiteSpace(note.Title) ? "StickyPad 노트" : note.Title;
+        var docTitle = string.IsNullOrWhiteSpace(note.Title) ? Strings.Export_DocumentTitle : note.Title;
 
         switch (format)
         {
@@ -235,9 +236,9 @@ public sealed class BackupService : IBackupService
             {
                 var dlg = new SaveFileDialog
                 {
-                    Filter = "HTML 문서 (*.html)|*.html",
+                    Filter = Strings.Export_HtmlFilter,
                     FileName = safe + ".html",
-                    Title = "HTML로 내보내기",
+                    Title = Strings.Export_HtmlDialogTitle,
                 };
                 if (dlg.ShowDialog() != true) return;
 
@@ -246,13 +247,13 @@ public sealed class BackupService : IBackupService
                     await File.WriteAllTextAsync(dlg.FileName, HtmlRenderer.RenderDocument(new[] { note }, docTitle))
                         .ConfigureAwait(true);
                     _logger.LogInformation("Exported note {Id} as HTML to {Path}", note.Id, dlg.FileName);
-                    MessageBox.Show($"HTML로 저장했습니다.\n{dlg.FileName}", "StickyPad",
+                    MessageBox.Show(string.Format(Strings.Export_HtmlSavedFormat, dlg.FileName), "StickyPad",
                         MessageBoxButton.OK, MessageBoxImage.Information);
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Single-note HTML export failed");
-                    MessageBox.Show("HTML로 내보내기에 실패했습니다.\n\n" + ex.Message, "StickyPad",
+                    MessageBox.Show(string.Format(Strings.Export_HtmlFailedFormat, ex.Message), "StickyPad",
                         MessageBoxButton.OK, MessageBoxImage.Warning);
                 }
                 break;
@@ -261,9 +262,9 @@ public sealed class BackupService : IBackupService
             {
                 var dlg = new SaveFileDialog
                 {
-                    Filter = "PDF 문서 (*.pdf)|*.pdf",
+                    Filter = Strings.Export_PdfFilter,
                     FileName = safe + ".pdf",
-                    Title = "PDF로 내보내기",
+                    Title = Strings.Export_PdfDialogTitle,
                 };
                 if (dlg.ShowDialog() != true) return;
 
@@ -272,14 +273,14 @@ public sealed class BackupService : IBackupService
                     await PdfRenderer.RenderAsync(HtmlRenderer.RenderDocument(new[] { note }, docTitle), dlg.FileName)
                         .ConfigureAwait(true);
                     _logger.LogInformation("Exported note {Id} as PDF to {Path}", note.Id, dlg.FileName);
-                    MessageBox.Show($"PDF로 저장했습니다.\n{dlg.FileName}", "StickyPad",
+                    MessageBox.Show(string.Format(Strings.Export_PdfSavedFormat, dlg.FileName), "StickyPad",
                         MessageBoxButton.OK, MessageBoxImage.Information);
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Single-note PDF export failed");
                     MessageBox.Show(
-                        "PDF로 내보내기에 실패했습니다. WebView2 런타임이 설치돼 있는지 확인해 주세요.\n\n" + ex.Message,
+                        string.Format(Strings.Export_PdfFailedFormat, ex.Message),
                         "StickyPad", MessageBoxButton.OK, MessageBoxImage.Warning);
                 }
                 break;
@@ -288,9 +289,9 @@ public sealed class BackupService : IBackupService
             {
                 var dlg = new SaveFileDialog
                 {
-                    Filter = "Markdown (*.md)|*.md",
+                    Filter = Strings.Export_MarkdownFilter,
                     FileName = safe + ".md",
-                    Title = "Markdown으로 내보내기",
+                    Title = Strings.Export_MarkdownDialogTitle,
                 };
                 if (dlg.ShowDialog() != true) return;
 
@@ -298,13 +299,13 @@ public sealed class BackupService : IBackupService
                 {
                     await File.WriteAllTextAsync(dlg.FileName, BuildMarkdown(note)).ConfigureAwait(true);
                     _logger.LogInformation("Exported note {Id} as Markdown to {Path}", note.Id, dlg.FileName);
-                    MessageBox.Show($"Markdown으로 저장했습니다.\n{dlg.FileName}", "StickyPad",
+                    MessageBox.Show(string.Format(Strings.Export_MarkdownSavedFormat, dlg.FileName), "StickyPad",
                         MessageBoxButton.OK, MessageBoxImage.Information);
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Single-note Markdown export failed");
-                    MessageBox.Show("Markdown으로 내보내기에 실패했습니다.\n\n" + ex.Message, "StickyPad",
+                    MessageBox.Show(string.Format(Strings.Export_MarkdownFailedFormat, ex.Message), "StickyPad",
                         MessageBoxButton.OK, MessageBoxImage.Warning);
                 }
                 break;
@@ -314,7 +315,7 @@ public sealed class BackupService : IBackupService
 
     public async Task PrintNoteAsync(Note note)
     {
-        var docTitle = string.IsNullOrWhiteSpace(note.Title) ? "StickyPad 노트" : note.Title;
+        var docTitle = string.IsNullOrWhiteSpace(note.Title) ? Strings.Export_DocumentTitle : note.Title;
         var html = HtmlRenderer.RenderDocument(new[] { note }, docTitle);
         var tmp = Path.Combine(Path.GetTempPath(), $"stickypad-print-{Guid.NewGuid():N}.html");
         await File.WriteAllTextAsync(tmp, html).ConfigureAwait(true);
@@ -326,7 +327,7 @@ public sealed class BackupService : IBackupService
         var web = new WebView2 { CreationProperties = new CoreWebView2CreationProperties { UserDataFolder = udf } };
         var host = new Window
         {
-            Title = "StickyPad — 인쇄",
+            Title = Strings.Print_WindowTitle,
             Width = 860,
             Height = 1000,
             WindowStartupLocation = WindowStartupLocation.CenterScreen,
@@ -348,7 +349,7 @@ public sealed class BackupService : IBackupService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Print failed");
-            MessageBox.Show("인쇄 준비에 실패했습니다.\n\n" + ex.Message, "StickyPad",
+            MessageBox.Show(string.Format(Strings.Print_PrepareFailedFormat, ex.Message), "StickyPad",
                 MessageBoxButton.OK, MessageBoxImage.Warning);
             host.Close();
         }
@@ -358,7 +359,7 @@ public sealed class BackupService : IBackupService
     private static string BuildMarkdown(Note note)
     {
         var sb = new StringBuilder();
-        var title = string.IsNullOrWhiteSpace(note.Title) ? "(제목 없음)" : note.Title;
+        var title = string.IsNullOrWhiteSpace(note.Title) ? Strings.NoteList_Untitled : note.Title;
 
         sb.Append("---\n");
         sb.Append("title: ").Append(YamlScalar(title)).Append('\n');
@@ -401,8 +402,8 @@ public sealed class BackupService : IBackupService
     {
         var dlg = new OpenFileDialog
         {
-            Filter = "StickyPad backup (*.json)|*.json|All files (*.*)|*.*",
-            Title = "Import StickyPad backup",
+            Filter = Strings.Backup_JsonImportFilter,
+            Title = Strings.Backup_ImportDialogTitle,
         };
         if (dlg.ShowDialog() != true) return;
 
@@ -415,20 +416,20 @@ public sealed class BackupService : IBackupService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Import parse failure");
-            MessageBox.Show($"Could not read backup:\n{ex.Message}", "StickyPad",
+            MessageBox.Show(string.Format(Strings.Backup_ReadFailedFormat, ex.Message), "StickyPad",
                 MessageBoxButton.OK, MessageBoxImage.Error);
             return;
         }
 
         if (payload?.Notes is null || payload.Notes.Count == 0)
         {
-            MessageBox.Show("Backup contains no notes.", "StickyPad",
+            MessageBox.Show(Strings.Backup_NoNotesInFile, "StickyPad",
                 MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 
         var confirm = MessageBox.Show(
-            $"Import {payload.Notes.Count} note(s)? Existing notes with the same id will be overwritten.",
+            string.Format(Strings.Backup_ImportConfirmFormat, payload.Notes.Count),
             "StickyPad",
             MessageBoxButton.OKCancel,
             MessageBoxImage.Question);

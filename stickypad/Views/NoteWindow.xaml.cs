@@ -18,6 +18,7 @@ using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
 using Microsoft.Win32;
 using StickyPad.Models;
+using StickyPad.Resources;
 using StickyPad.Services;
 using StickyPad.Utils;
 using StickyPad.ViewModels;
@@ -455,7 +456,7 @@ public partial class NoteWindow : Window
         catch (Exception ex)
         {
             MessageBox.Show(this,
-                "미리보기를 표시할 수 없습니다. WebView2 런타임이 필요할 수 있습니다.\n\n" + ex.Message,
+                string.Format(Strings.Note_PreviewError, ex.Message),
                 "StickyPad", MessageBoxButton.OK, MessageBoxImage.Warning);
             _viewModel.IsPreviewMode = false;
         }
@@ -514,14 +515,14 @@ public partial class NoteWindow : Window
         var dlg = new OpenFileDialog
         {
             Filter = LinkedFile.OpenDialogFilter,
-            Title = "Markdown / 텍스트 파일 열기",
+            Title = Strings.Tray_OpenMarkdownDialogTitle,
         };
         if (dlg.ShowDialog(this) == true)
         {
             try { await _onOpenFileRequested(dlg.FileName); }
             catch (Exception ex)
             {
-                MessageBox.Show(this, "파일을 열 수 없습니다:\n" + ex.Message, "StickyPad",
+                MessageBox.Show(this, string.Format(Strings.Note_OpenFileError, ex.Message), "StickyPad",
                     MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
@@ -550,7 +551,7 @@ public partial class NoteWindow : Window
             try { await _onOpenFileRequested(file); }
             catch (Exception ex)
             {
-                MessageBox.Show(this, "파일을 열 수 없습니다:\n" + ex.Message, "StickyPad",
+                MessageBox.Show(this, string.Format(Strings.Note_OpenFileError, ex.Message), "StickyPad",
                     MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
@@ -613,10 +614,8 @@ public partial class NoteWindow : Window
             try
             {
                 var choice = MessageBox.Show(this,
-                    "이 파일이 다른 프로그램에서 변경되었습니다.\n디스크의 내용으로 다시 불러올까요?\n\n" +
-                    "[예] 디스크 내용으로 교체 (편집 중이던 내용은 사라집니다)\n" +
-                    "[아니오] 지금 편집 내용을 유지 (다음 저장 시 파일을 덮어씁니다)",
-                    "StickyPad — 파일 변경 감지",
+                    Strings.Note_FileChangedPrompt,
+                    Strings.Note_FileChangedTitle,
                     MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
                 if (choice != MessageBoxResult.Yes) return;
             }
@@ -703,9 +702,8 @@ public partial class NoteWindow : Window
     private async void DeleteButton_OnClick(object sender, RoutedEventArgs e)
     {
         var message = _viewModel.IsLinkedFile
-            ? "이 연동 노트를 휴지통으로 보낼까요?\n연결된 원본 파일(" +
-              Path.GetFileName(_viewModel.LinkedFilePath!) + ")은 삭제되지 않고 그대로 남습니다."
-            : "Delete this note? This cannot be undone.";
+            ? string.Format(Strings.Note_DeleteLinkedConfirm, Path.GetFileName(_viewModel.LinkedFilePath!))
+            : Strings.Note_DeleteConfirm;
         var confirm = MessageBox.Show(
             this,
             message,
@@ -740,7 +738,7 @@ public partial class NoteWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, "내보내기에 실패했습니다:\n" + ex.Message, "StickyPad", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(this, string.Format(Strings.Note_ExportError, ex.Message), "StickyPad", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
@@ -753,7 +751,7 @@ public partial class NoteWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, "인쇄에 실패했습니다:\n" + ex.Message, "StickyPad", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(this, string.Format(Strings.Note_PrintError, ex.Message), "StickyPad", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
@@ -1011,7 +1009,7 @@ public partial class NoteWindow : Window
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, $"Couldn't open the link:\n{ex.Message}", "StickyPad",
+                MessageBox.Show(this, string.Format(Strings.Note_OpenLinkError, ex.Message), "StickyPad",
                     MessageBoxButton.OK, MessageBoxImage.Warning);
             }
             return;
@@ -1021,7 +1019,7 @@ public partial class NoteWindow : Window
         var title = Uri.UnescapeDataString(e.Uri.AbsolutePath.TrimStart('/'));
         if (!_onLinkActivated(title))
         {
-            MessageBox.Show(this, $"No note titled '{title}' was found.", "StickyPad",
+            MessageBox.Show(this, string.Format(Strings.Note_NoteNotFound, title), "StickyPad",
                 MessageBoxButton.OK, MessageBoxImage.Information);
         }
     }

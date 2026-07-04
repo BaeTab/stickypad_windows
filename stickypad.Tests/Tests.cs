@@ -1,13 +1,42 @@
 using System;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using StickyPad.Models;
+using StickyPad.Resources;
 using StickyPad.Services;
 using StickyPad.Utils;
 
 namespace StickyPad.Tests;
+
+public class LocalizationTests
+{
+    [Fact]
+    public void Strings_ResolvePerCulture()
+    {
+        var original = CultureInfo.CurrentUICulture;
+        try
+        {
+            CultureInfo.CurrentUICulture = new CultureInfo("ko");
+            Assert.Equal("설정", Strings.Settings_Title);          // ko 위성 어셈블리
+            Assert.Equal("저장", Strings.Common_Save);
+
+            CultureInfo.CurrentUICulture = new CultureInfo("en");
+            Assert.Equal("Settings", Strings.Settings_Title);      // neutral(영어) 폴백
+            Assert.Equal("Save", Strings.Common_Save);
+
+            // 정의되지 않은 문화권(예: 프랑스어)은 neutral(영어)로 폴백.
+            CultureInfo.CurrentUICulture = new CultureInfo("fr");
+            Assert.Equal("Settings", Strings.Settings_Title);
+        }
+        finally
+        {
+            CultureInfo.CurrentUICulture = original;
+        }
+    }
+}
 
 public class HotkeyGestureTests
 {

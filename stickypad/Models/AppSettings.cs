@@ -8,4 +8,7 @@ public sealed class AppSettings
     public string NotesListHotkey { get; set; } = "Ctrl+Shift+L";
     public bool NotesHiddenAtExit { get; set; }
     public bool AutoCheckForUpdates { get; set; } = true;
+
+    /// UI 언어: "system"(OS 따라), "en", "ko".
+    public string Language { get; set; } = "system";
 }

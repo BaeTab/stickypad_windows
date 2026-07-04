@@ -2,9 +2,10 @@
     x:Class="StickyPad.Views.SettingsWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    Title="StickyPad — Settings"
+    xmlns:res="clr-namespace:StickyPad.Resources"
+    Title="{x:Static res:Strings.Settings_WindowTitle}"
     Width="400"
-    Height="380"
+    Height="460"
     Background="#FAFAFA"
     FontFamily="Segoe UI"
     ResizeMode="NoResize"
@@ -20,6 +21,8 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
@@ -28,24 +31,24 @@
             Grid.Row="0"
             FontSize="18"
             FontWeight="SemiBold"
-            Text="설정" />
+            Text="{x:Static res:Strings.Settings_Title}" />
 
         <CheckBox
             Grid.Row="1"
             Margin="0,16,0,0"
-            Content="Windows 시작 시 자동 실행"
+            Content="{x:Static res:Strings.Settings_AutoStart}"
             IsChecked="{Binding AutoStartWithWindows}" />
 
         <CheckBox
             Grid.Row="2"
             Margin="0,12,0,0"
-            Content="새 버전 자동 확인 (GitHub 릴리즈)"
+            Content="{x:Static res:Strings.Settings_AutoUpdate}"
             IsChecked="{Binding AutoCheckForUpdates}" />
 
         <CheckBox
             Grid.Row="3"
             Margin="0,12,0,0"
-            Content="전역 단축키 사용"
+            Content="{x:Static res:Strings.Settings_GlobalHotkeys}"
             IsChecked="{Binding GlobalHotkeysEnabled}" />
 
         <Grid Grid.Row="4" Margin="0,14,0,0" IsEnabled="{Binding GlobalHotkeysEnabled}">
@@ -53,7 +56,7 @@
                 <ColumnDefinition Width="90" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
-            <TextBlock VerticalAlignment="Center" Text="새 노트" />
+            <TextBlock VerticalAlignment="Center" Text="{x:Static res:Strings.Settings_NewNoteLabel}" />
             <TextBox
                 x:Name="NewNoteBox"
                 Grid.Column="1"
@@ -70,7 +73,7 @@
                 <ColumnDefinition Width="90" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
-            <TextBlock VerticalAlignment="Center" Text="전체 목록" />
+            <TextBlock VerticalAlignment="Center" Text="{x:Static res:Strings.Settings_NotesListLabel}" />
             <TextBox
                 x:Name="NotesListBox"
                 Grid.Column="1"
@@ -87,10 +90,34 @@
             Margin="0,8,0,0"
             FontSize="11"
             Foreground="#888"
-            Text="입력란을 클릭한 뒤 원하는 조합키를 누르세요 (예: Ctrl+Shift+N)." />
+            Text="{x:Static res:Strings.Settings_HotkeyHint}" />
+
+        <Grid Grid.Row="7" Margin="0,16,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="90" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <TextBlock VerticalAlignment="Center" Text="{x:Static res:Strings.Settings_Language}" />
+            <ComboBox
+                Grid.Column="1"
+                Height="30"
+                VerticalContentAlignment="Center"
+                DisplayMemberPath="Label"
+                ItemsSource="{Binding LanguageOptions}"
+                SelectedValue="{Binding SelectedLanguage}"
+                SelectedValuePath="Value" />
+        </Grid>
 
         <TextBlock
-            Grid.Row="7"
+            Grid.Row="8"
+            Margin="0,6,0,0"
+            FontSize="11"
+            Foreground="#888"
+            Text="{x:Static res:Strings.Settings_RestartNote}"
+            TextWrapping="Wrap" />
+
+        <TextBlock
+            Grid.Row="9"
             Margin="0,10,0,0"
             VerticalAlignment="Top"
             FontSize="12"
@@ -99,7 +126,7 @@
             TextWrapping="Wrap" />
 
         <StackPanel
-            Grid.Row="8"
+            Grid.Row="10"
             HorizontalAlignment="Right"
             Orientation="Horizontal">
             <Button
@@ -107,13 +134,13 @@
                 Margin="0,0,8,0"
                 Padding="10,5"
                 Click="Cancel_OnClick"
-                Content="취소"
+                Content="{x:Static res:Strings.Common_Cancel}"
                 IsCancel="True" />
             <Button
                 Width="80"
                 Padding="10,5"
                 Command="{Binding SaveCommand}"
-                Content="저장"
+                Content="{x:Static res:Strings.Common_Save}"
                 IsDefault="True" />
         </StackPanel>
     </Grid>

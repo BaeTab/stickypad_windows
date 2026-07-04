@@ -5,6 +5,7 @@ using System.Text;
 using System.Windows.Media;
 using Markdig;
 using StickyPad.Models;
+using StickyPad.Resources;
 
 namespace StickyPad.Utils;
 
@@ -75,14 +76,15 @@ public static class HtmlRenderer
         sb.Append("<header class=\"doc-head\"><h1>")
           .Append(WebUtility.HtmlEncode(documentTitle)).Append("</h1>");
         sb.Append("<div class=\"doc-meta\">")
-          .Append(WebUtility.HtmlEncode($"내보낸 시각 {DateTime.Now:yyyy-MM-dd HH:mm} · {notes.Count}개 노트"))
+          .Append(WebUtility.HtmlEncode(string.Format(Strings.Export_MetaFormat,
+              $"{DateTime.Now:yyyy-MM-dd HH:mm}", notes.Count)))
           .Append("</div></header>");
 
         foreach (var note in notes)
         {
             var theme = NotePalette.For(note.Color);
             var accent = Hex(theme.Header);
-            var title = string.IsNullOrWhiteSpace(note.Title) ? "(제목 없음)" : note.Title;
+            var title = string.IsNullOrWhiteSpace(note.Title) ? Strings.NoteList_Untitled : note.Title;
 
             var body = note.Format switch
             {

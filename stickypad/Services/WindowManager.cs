@@ -7,6 +7,7 @@ using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using StickyPad.Models;
+using StickyPad.Resources;
 using StickyPad.Utils;
 using StickyPad.ViewModels;
 using StickyPad.Views;
@@ -130,7 +131,7 @@ public sealed class WindowManager : IWindowManager
 
         if (!File.Exists(full))
         {
-            MessageBox.Show($"파일을 찾을 수 없습니다:\n{full}", "StickyPad",
+            MessageBox.Show(string.Format(Strings.Note_FileNotFoundFormat, full), "StickyPad",
                 MessageBoxButton.OK, MessageBoxImage.Warning);
             return null;
         }
@@ -152,7 +153,7 @@ public sealed class WindowManager : IWindowManager
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to open linked file {Path}", full);
-            MessageBox.Show($"파일을 열 수 없습니다:\n{ex.Message}", "StickyPad",
+            MessageBox.Show(string.Format(Strings.Note_OpenFileError, ex.Message), "StickyPad",
                 MessageBoxButton.OK, MessageBoxImage.Warning);
             return null;
         }
