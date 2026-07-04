@@ -1,0 +1,28 @@
+# Created using wingetcreate-compatible manual authoring
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.6.0.schema.json
+
+PackageIdentifier: BaeTab.StickyPad
+PackageVersion: 1.7.0
+PackageLocale: en-US
+Publisher: BaeTab
+PublisherUrl: https://github.com/BaeTab
+PublisherSupportUrl: https://github.com/BaeTab/stickypad_windows/issues
+PackageName: StickyPad
+PackageUrl: https://github.com/BaeTab/stickypad_windows
+License: MIT
+LicenseUrl: https://github.com/BaeTab/stickypad_windows/blob/main/LICENSE
+Copyright: Copyright (c) 2026 BaeTab
+ShortDescription: A lightweight, local-first sticky-note app for Windows.
+Description: |-
+  StickyPad is a lightweight, local-first sticky-note application for Windows.
+  It runs as a single portable executable with no installation required, keeping
+  all notes stored locally on your machine.
+Moniker: stickypad
+Tags:
+- sticky-notes
+- notes
+- markdown
+- windows
+ReleaseNotesUrl: https://github.com/BaeTab/stickypad_windows/releases/tag/v1.7.0
+ManifestType: defaultLocale
+ManifestVersion: 1.6.0

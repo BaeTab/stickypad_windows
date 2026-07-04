@@ -1,0 +1,14 @@
+# Created using wingetcreate-compatible manual authoring
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.6.0.schema.json
+
+PackageIdentifier: BaeTab.StickyPad
+PackageVersion: 1.7.0
+InstallerType: portable
+Commands:
+- StickyPad
+Installers:
+- Architecture: x64
+  InstallerUrl: https://github.com/BaeTab/stickypad_windows/releases/download/v1.7.0/StickyPad-v1.7.0-win-x64.exe
+  InstallerSha256: 16582F32A0F7604E539F27051FE7481526B0E402469C0C6DA4AF31F9253CA40F
+ManifestType: installer
+ManifestVersion: 1.6.0
