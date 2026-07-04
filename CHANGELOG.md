@@ -5,6 +5,17 @@ All notable changes to StickyPad are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This file starts from the point it was introduced — earlier history lives in the git log.
 
+## [2.0.0] - 2026-07-05
+
+### Added
+- **Vault mode (live).** Switch the storage backend to a "Vault folder (.md files)" in **Settings → Storage**. Each note is saved as a human‑readable `.md` file (YAML front matter with `id`/`title`/`format`/`color`/`tags`/dates, plus the body — Obsidian‑compatible), while StickyPad‑specific state (window geometry, trash, etc.) lives in a sidecar `.stickypad-index.json`. Put the folder in OneDrive/Dropbox/etc. and your notes sync across machines (changes made externally are picked up on restart). On first switch, existing notes are safely migrated into the vault (only when the vault is empty). The built‑in database remains the default — Vault mode is strictly opt‑in, with zero risk to existing users.
+- **Vault export/import** (tray → *Vault*) — export all notes to a folder of round‑trippable `.md` files, or import a folder of `.md` files back into StickyPad.
+- **winget manifest** — StickyPad can now be packaged/submitted via winget (see `packaging/winget/`).
+- **Install & SmartScreen guide** (`docs/INSTALL.md`) — explains why the unsigned‑app SmartScreen warning appears and how to verify the release's SHA‑256 checksum.
+
+### Changed
+- Introduced a DB schema migrator under the hood, enabling safe, versioned data‑model evolution going forward.
+
 ## [1.7.0] - 2026-07-05
 
 ### Added

@@ -44,6 +44,7 @@ StickyPad lives in your system tray and puts a note on your desktop in a single 
 - 🖥️ **Stays out of the way** — tray icon, per‑note opacity, always‑on‑top pin, multi‑monitor aware.
 - 💾 **Local‑first** — an embedded LiteDB file on your machine, with one‑click JSON backup export/import.
 - 🌐 **Bilingual UI** — English & Korean; auto-detects your Windows language and switchable in Settings.
+- 🗄️ **Vault mode** — store your notes as human‑readable `.md` files in a folder you choose (Obsidian‑compatible). Put it in a cloud folder for multi‑device sync. Opt in under **Settings → Storage**; the built‑in database stays the default.
 
 ## Screenshots
 
@@ -105,6 +106,7 @@ Switch a note between **Text / Markdown / HTML** and it renders on the spot:
 - **Export notes as text** — dump all active notes to a readable Markdown/`.txt` file (tray menu).
 - **Export from the All‑notes window** — the *내보내기 ▾* button exports the selected notes (or the current filtered list, if nothing is selected) as a single styled **HTML** document, a single **PDF** (rendered via an offscreen WebView2), or **one Markdown file per note** (with YAML front matter) into a folder you choose.
 - **Export/print a single note** — from a note's header **⤓** menu, save the current note as PDF, HTML, or Markdown, or send it to the printer.
+- **Vault (folder of .md)** — export all notes to / import from a folder of round‑trippable Markdown files (tray → Vault).
 - **Recycle Bin** — deleted notes are soft‑deleted, restorable, and permanently purged after 30 days (a cleanup also runs at startup).
 - **Rolling logs** kept for 7 days for troubleshooting.
 
