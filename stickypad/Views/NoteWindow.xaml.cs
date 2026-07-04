@@ -79,6 +79,7 @@ public partial class NoteWindow : Window
         _onOpenFileRequested = onOpenFileRequested;
 
         Icon = IconFactory.CreateAppIcon();
+        PopulateTemplateMenu();
 
         DataContext = viewModel;
         Left = viewModel.X;
@@ -724,7 +725,17 @@ public partial class NoteWindow : Window
         await _viewModel.DeleteCommand.ExecuteAsync(null).ConfigureAwait(true);
     }
 
-    private void ExportMenu_OnClick(object sender, RoutedEventArgs e)
+    private void PopulateTemplateMenu()
+    {
+        foreach (var template in NoteTemplates.All)
+        {
+            var item = new MenuItem { Header = template.Name() };
+            item.Click += (_, _) => App.Services.GetRequiredService<IWindowManager>().CreateAndShowNew(template);
+            TemplateMenu.Items.Add(item);
+        }
+    }
+
+    private void MoreMenu_OnClick(object sender, RoutedEventArgs e)
     {
         if (sender is System.Windows.Controls.Button { ContextMenu: { } menu } b)
         {

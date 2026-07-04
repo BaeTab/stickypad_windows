@@ -198,6 +198,18 @@
   <data name="NoteList_ClearSelection" xml:space="preserve">
     <value>Clear selection</value>
   </data>
+  <data name="Bulk_Actions" xml:space="preserve">
+    <value>Bulk actions</value>
+  </data>
+  <data name="Bulk_DeleteSelected" xml:space="preserve">
+    <value>Delete selected</value>
+  </data>
+  <data name="Bulk_ChangeColor" xml:space="preserve">
+    <value>Change color</value>
+  </data>
+  <data name="Bulk_DeleteConfirmFormat" xml:space="preserve">
+    <value>Move {0} selected note(s) to the Trash?</value>
+  </data>
   <data name="NoteList_TabActive" xml:space="preserve">
     <value>Active</value>
   </data>
@@ -248,6 +260,9 @@
   </data>
   <data name="Tray_NewNote" xml:space="preserve">
     <value>New note  (Ctrl+Shift+N)</value>
+  </data>
+  <data name="Tray_NewFromTemplate" xml:space="preserve">
+    <value>New note from template</value>
   </data>
   <data name="Tray_OpenMarkdownFile" xml:space="preserve">
     <value>Open markdown file…</value>
@@ -311,6 +326,12 @@
   </data>
   <data name="Note_AllNotes" xml:space="preserve">
     <value>All notes (Ctrl+Shift+L)</value>
+  </data>
+  <data name="Note_More" xml:space="preserve">
+    <value>More</value>
+  </data>
+  <data name="Note_NewFromTemplate" xml:space="preserve">
+    <value>New from template</value>
   </data>
   <data name="Note_ExportPrintTooltip" xml:space="preserve">
     <value>Export · Print</value>
@@ -562,5 +583,17 @@ Update now?
   </data>
   <data name="Update_ApplyFailed" xml:space="preserve">
     <value>Failed to apply the update.</value>
+  </data>
+  <data name="Update_IntegrityFailed" xml:space="preserve">
+    <value>The downloaded update failed integrity verification and was not applied.</value>
+  </data>
+  <data name="Template_DailyLog" xml:space="preserve">
+    <value>Daily log</value>
+  </data>
+  <data name="Template_Meeting" xml:space="preserve">
+    <value>Meeting notes</value>
+  </data>
+  <data name="Template_Todo" xml:space="preserve">
+    <value>To-do list</value>
   </data>
 </root>

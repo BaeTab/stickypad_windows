@@ -74,6 +74,30 @@ public sealed class WindowManager : IWindowManager
         return window;
     }
 
+    public NoteWindow CreateAndShowNew(NoteTemplate template)
+    {
+        var content = template.Content.Replace("{{date}}", DateTime.Now.ToString("yyyy-MM-dd"));
+        var plainText = TextExtraction.ToPlainText(content, template.Format);
+        var note = new Note
+        {
+            X = 120 + _windows.Count * 24,
+            Y = 120 + _windows.Count * 24,
+            Width = 280,
+            Height = 280,
+            Color = template.Color,
+            Content = content,
+            Format = template.Format,
+            PlainText = plainText,
+            Title = TextExtraction.DeriveTitle(plainText),
+            Tags = TextExtraction.ExtractTags(plainText),
+        };
+        _ = _repository.UpsertAsync(note);
+        var window = BuildWindow(note);
+        window.Show();
+        window.Activate();
+        return window;
+    }
+
     public void ShowAll()
     {
         foreach (var w in _windows)

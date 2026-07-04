@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
 using System.Reflection;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -18,6 +19,7 @@ public sealed class UpdateService : IUpdateService
     private const string LatestReleaseApi =
         "https://api.github.com/repos/BaeTab/stickypad_windows/releases/latest";
     private const string AssetSuffix = "win-x64.exe";
+    private const string ChecksumSuffix = "win-x64.exe.sha256";
 
     private static readonly HttpClient Http = CreateClient();
     private readonly ILogger<UpdateService> _logger;
@@ -68,9 +70,10 @@ public sealed class UpdateService : IUpdateService
                 return;
             }
 
-            if (string.IsNullOrEmpty(release.DownloadUrl))
+            if (string.IsNullOrEmpty(release.DownloadUrl) || string.IsNullOrEmpty(release.ChecksumUrl))
             {
-                _logger.LogWarning("Newer release {Tag} has no {Suffix} asset", release.Tag, AssetSuffix);
+                // 검증할 체크섬이 없는 릴리즈는 제안하지 않는다(무결성 확인 불가).
+                _logger.LogWarning("Newer release {Tag} lacks exe/sha256 asset", release.Tag);
                 if (userInitiated) Report(string.Format(Strings.Update_AssetNotFoundFormat, release.Tag), MessageBoxImage.Warning);
                 return;
             }
@@ -88,28 +91,57 @@ public sealed class UpdateService : IUpdateService
 
     private async Task DownloadAndApplyAsync(ReleaseInfo release)
     {
-        // 방어: 태그·URL 검증. 태그(GitHub 값)를 파일 경로·스크립트에 그대로 넣지 않고,
-        // 다운로드 출처는 https + GitHub 호스트로 제한한다.
-        if (!IsSafeReleaseTag(release.Tag) || !IsTrustedDownloadUrl(release.DownloadUrl))
+        // 방어: 태그·URL·체크섬 URL 검증. 태그(GitHub 값)를 파일 경로·스크립트에 그대로 넣지 않고,
+        // 다운로드·체크섬 출처는 https + GitHub 호스트로 제한한다.
+        if (!IsSafeReleaseTag(release.Tag) || !IsTrustedDownloadUrl(release.DownloadUrl)
+            || !IsTrustedDownloadUrl(release.ChecksumUrl))
         {
-            _logger.LogWarning("Refusing update: untrusted tag/url ({Tag}, {Url})", release.Tag, release.DownloadUrl);
+            _logger.LogWarning("Refusing update: untrusted tag/url/checksum ({Tag})", release.Tag);
             Report(Strings.Update_ApplyFailed, MessageBoxImage.Warning);
             return;
         }
 
-        // 예측 불가한 전용 스테이징 폴더 — 같은 세션 프로세스의 바꿔치기(TOCTOU)를 어렵게 하고
-        // 파일명에 신뢰되지 않은 태그를 넣지 않는다.
+        byte[] bytes;
+        try
+        {
+            bytes = await Http.GetByteArrayAsync(release.DownloadUrl!).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Update download failed");
+            Report(Strings.Update_DownloadFailed, MessageBoxImage.Warning);
+            return;
+        }
+
+        // 무결성 검증 — 릴리즈의 .sha256 자산과 대조. 불일치·누락 시 적용을 거부한다(fail-closed).
+        try
+        {
+            var checksumText = await Http.GetStringAsync(release.ChecksumUrl!).ConfigureAwait(false);
+            if (!VerifyChecksum(bytes, checksumText))
+            {
+                _logger.LogError("Update integrity verification FAILED for {Tag}", release.Tag);
+                Report(Strings.Update_IntegrityFailed, MessageBoxImage.Warning);
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Update checksum fetch/verify failed");
+            Report(Strings.Update_IntegrityFailed, MessageBoxImage.Warning);
+            return;
+        }
+
+        // 검증 통과 후에만 스테이징. 예측 불가한 전용 폴더(TOCTOU 완화, 파일명에 태그 미포함).
         var stageDir = Path.Combine(Path.GetTempPath(), "StickyPad-update-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(stageDir);
         var tempExe = Path.Combine(stageDir, "StickyPad-update.exe");
         try
         {
-            var bytes = await Http.GetByteArrayAsync(release.DownloadUrl!).ConfigureAwait(false);
             await File.WriteAllBytesAsync(tempExe, bytes).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Update download failed");
+            _logger.LogError(ex, "Update staging write failed");
             Report(Strings.Update_DownloadFailed, MessageBoxImage.Warning);
             return;
         }
@@ -183,20 +215,19 @@ public sealed class UpdateService : IUpdateService
         var tag = tagEl.GetString() ?? string.Empty;
         var version = ParseVersion(tag);
 
-        string? url = null;
+        string? url = null, checksumUrl = null;
         if (root.TryGetProperty("assets", out var assets) && assets.ValueKind == JsonValueKind.Array)
         {
             foreach (var asset in assets.EnumerateArray())
             {
                 var name = asset.TryGetProperty("name", out var n) ? n.GetString() : null;
-                if (name is not null && name.EndsWith(AssetSuffix, StringComparison.OrdinalIgnoreCase))
-                {
-                    url = asset.TryGetProperty("browser_download_url", out var u) ? u.GetString() : null;
-                    break;
-                }
+                if (name is null) continue;
+                var dl = asset.TryGetProperty("browser_download_url", out var u) ? u.GetString() : null;
+                if (name.EndsWith(ChecksumSuffix, StringComparison.OrdinalIgnoreCase)) checksumUrl ??= dl;
+                else if (name.EndsWith(AssetSuffix, StringComparison.OrdinalIgnoreCase)) url ??= dl;
             }
         }
-        return new ReleaseInfo(tag, version, url);
+        return new ReleaseInfo(tag, version, url, checksumUrl);
     }
 
     internal static Version? ParseVersion(string tag)
@@ -216,6 +247,23 @@ public sealed class UpdateService : IUpdateService
         && (u.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase)
             || u.Host.EndsWith(".githubusercontent.com", StringComparison.OrdinalIgnoreCase));
 
+    /// 다운로드한 바이트의 SHA-256 이 체크섬 파일("<64자리 hex>  파일명")의 값과 일치하는지.
+    internal static bool VerifyChecksum(byte[] data, string? checksumFileText)
+    {
+        var expected = ExtractSha256Hex(checksumFileText);
+        if (expected is null) return false;
+        var actual = Convert.ToHexString(SHA256.HashData(data));
+        return string.Equals(actual, expected, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// 체크섬 파일 텍스트에서 첫 64자리 16진수(SHA-256) 토큰을 추출. 없으면 null.
+    internal static string? ExtractSha256Hex(string? text)
+    {
+        if (string.IsNullOrEmpty(text)) return null;
+        var m = Regex.Match(text, @"\b([0-9a-fA-F]{64})\b");
+        return m.Success ? m.Groups[1].Value : null;
+    }
+
     private static void Report(string message, MessageBoxImage icon) =>
         Application.Current.Dispatcher.Invoke(() =>
             MessageBox.Show(message, "StickyPad", MessageBoxButton.OK, icon));
@@ -225,5 +273,5 @@ public sealed class UpdateService : IUpdateService
             MessageBox.Show(message, Strings.Update_ConfirmCaption, MessageBoxButton.OKCancel, MessageBoxImage.Question)
             == MessageBoxResult.OK);
 
-    internal sealed record ReleaseInfo(string Tag, Version? Version, string? DownloadUrl);
+    internal sealed record ReleaseInfo(string Tag, Version? Version, string? DownloadUrl, string? ChecksumUrl);
 }

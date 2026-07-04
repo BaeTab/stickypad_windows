@@ -68,8 +68,10 @@ Switch a note between **Text / Markdown / HTML** and it renders on the spot:
 - **Preview / Edit toggle** (`Ctrl+E`) locks a note read‑only so you can't fumble the text while reading it.
 - **Auto title** — the first non‑empty line becomes the note's title (used for the list and for `[[links]]`).
 - **Autosave** — edits are debounced and persisted automatically; no save button.
+- **Templates** — start a new note from a built‑in template (Daily log · Meeting notes · To‑do list) from a note's **⋯** menu or the tray.
 
 ### Organization
+- **Bulk actions** — tick multiple notes in the All‑notes window, then delete them or change their color in one go.
 - **`#tags`** are parsed live from the note body; the **All notes** window shows a tag sidebar with counts and one‑click filtering.
 - **Search** across title, tags, and body with scored ranking and inline highlighting of matches.
 - **`[[Wiki links]]`** resolve by note title — clicking opens (or focuses) the target note; missing targets are reported.
@@ -93,6 +95,7 @@ Switch a note between **Text / Markdown / HTML** and it renders on the spot:
 - **Global hotkeys:** new note and All‑notes list from anywhere, fully configurable (or disabled).
 - **Start with Windows** — optional auto‑start via the current‑user `Run` registry key.
 - **Automatic updates** — on launch (and from the tray's *Check for updates…*) StickyPad checks GitHub Releases and, with your OK, downloads the new build and self‑replaces on restart. Toggle it in Settings.
+- **Verified updates** — downloaded updates are checked against a published SHA‑256 checksum before they're applied.
 - **Single instance** — launching again just surfaces the running app (and forwards any file passed on the command line to it, so double‑clicking an `.md` opens it in the running instance).
 - **`.md` file association** — StickyPad registers itself (per‑user, no admin) in the Windows *Open with* list for `.md`/`.markdown`, without hijacking your default editor.
 - **Language** — English or Korean UI; follows Windows by default, change it in **Settings** (takes effect after restart).

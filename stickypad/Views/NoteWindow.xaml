@@ -252,32 +252,24 @@
                             ToolTip="{x:Static res:Strings.Note_AlwaysOnTop}"
                             Content="Pin" />
                         <Button
-                            Click="OpenFileButton_OnClick"
                             Style="{StaticResource ChromeButton}"
-                            ToolTip="{x:Static res:Strings.Note_OpenFile}"
-                            Content="📂" />
-                        <Button
-                            Click="NewButton_OnClick"
-                            Style="{StaticResource ChromeButton}"
-                            ToolTip="{x:Static res:Strings.Note_NewNote}"
-                            Content="+" />
-                        <Button
-                            Click="ListButton_OnClick"
-                            Style="{StaticResource ChromeButton}"
-                            ToolTip="{x:Static res:Strings.Note_AllNotes}"
-                            Content="≡" />
-                        <Button
-                            Style="{StaticResource ChromeButton}"
-                            ToolTip="{x:Static res:Strings.Note_ExportPrintTooltip}"
-                            Click="ExportMenu_OnClick"
-                            Content="⤓">
+                            ToolTip="{x:Static res:Strings.Note_More}"
+                            Click="MoreMenu_OnClick"
+                            Content="⋯">
                             <Button.ContextMenu>
                                 <ContextMenu>
-                                    <MenuItem Header="{x:Static res:Strings.Note_ExportPdfMenu}" Click="ExportNotePdf_OnClick" />
-                                    <MenuItem Header="{x:Static res:Strings.Note_ExportHtmlMenu}" Click="ExportNoteHtml_OnClick" />
-                                    <MenuItem Header="{x:Static res:Strings.Note_ExportMarkdownMenu}" Click="ExportNoteMarkdown_OnClick" />
+                                    <MenuItem Header="{x:Static res:Strings.Note_NewNote}" Click="NewButton_OnClick" />
+                                    <MenuItem x:Name="TemplateMenu" Header="{x:Static res:Strings.Note_NewFromTemplate}" />
+                                    <MenuItem Header="{x:Static res:Strings.Note_OpenFile}" Click="OpenFileButton_OnClick" />
+                                    <MenuItem Header="{x:Static res:Strings.Note_AllNotes}" Click="ListButton_OnClick" />
                                     <Separator />
-                                    <MenuItem Header="{x:Static res:Strings.Note_PrintMenu}" Click="PrintNote_OnClick" />
+                                    <MenuItem Header="{x:Static res:Strings.Note_ExportPrintTooltip}">
+                                        <MenuItem Header="{x:Static res:Strings.Note_ExportPdfMenu}" Click="ExportNotePdf_OnClick" />
+                                        <MenuItem Header="{x:Static res:Strings.Note_ExportHtmlMenu}" Click="ExportNoteHtml_OnClick" />
+                                        <MenuItem Header="{x:Static res:Strings.Note_ExportMarkdownMenu}" Click="ExportNoteMarkdown_OnClick" />
+                                        <Separator />
+                                        <MenuItem Header="{x:Static res:Strings.Note_PrintMenu}" Click="PrintNote_OnClick" />
+                                    </MenuItem>
                                 </ContextMenu>
                             </Button.ContextMenu>
                         </Button>

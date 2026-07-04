@@ -104,6 +104,42 @@ public class SecurityHardeningTests
         Assert.Equal(expected, UpdateService.IsTrustedDownloadUrl(url));
 }
 
+public class UpdateIntegrityTests
+{
+    private const string HelloSha256 = "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824";
+
+    [Fact]
+    public void VerifyChecksum_MatchesCorrectHash_RejectsOthers()
+    {
+        var data = System.Text.Encoding.UTF8.GetBytes("hello");
+        Assert.True(UpdateService.VerifyChecksum(data, HelloSha256 + "  StickyPad.exe"));
+        Assert.True(UpdateService.VerifyChecksum(data, HelloSha256.ToUpperInvariant() + "  x")); // 대소문자 무시
+        Assert.False(UpdateService.VerifyChecksum(data, new string('0', 64) + "  x"));            // 불일치
+        Assert.False(UpdateService.VerifyChecksum(data, "not-a-hash"));                           // hex 없음
+        Assert.False(UpdateService.VerifyChecksum(data, null));                                   // 누락 → 거부
+    }
+
+    [Fact]
+    public void ExtractSha256Hex_ParsesTokenOrNull()
+    {
+        Assert.Equal(HelloSha256, UpdateService.ExtractSha256Hex(HelloSha256 + "  file.exe"));
+        Assert.Null(UpdateService.ExtractSha256Hex("nope"));
+        Assert.Null(UpdateService.ExtractSha256Hex(""));
+    }
+
+    [Fact]
+    public void ParseRelease_PicksExeAndChecksumAssets()
+    {
+        var json = @"{""tag_name"":""v1.7.0"",""assets"":[
+            {""name"":""StickyPad-v1.7.0-win-x64.exe"",""browser_download_url"":""https://github.com/a/b/releases/download/v1.7.0/StickyPad-v1.7.0-win-x64.exe""},
+            {""name"":""StickyPad-v1.7.0-win-x64.exe.sha256"",""browser_download_url"":""https://github.com/a/b/releases/download/v1.7.0/StickyPad-v1.7.0-win-x64.exe.sha256""}]}";
+        var r = UpdateService.ParseRelease(json);
+        Assert.NotNull(r);
+        Assert.EndsWith("win-x64.exe", r!.DownloadUrl);
+        Assert.EndsWith(".exe.sha256", r.ChecksumUrl);
+    }
+}
+
 public class LocalizationTests
 {
     [Fact]

@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using H.NotifyIcon;
 using Microsoft.Extensions.Logging;
+using StickyPad.Models;
 using StickyPad.Resources;
 using StickyPad.Utils;
 
@@ -68,6 +69,7 @@ public sealed class TrayService : ITrayService
         var menu = new ContextMenu();
 
         menu.Items.Add(MenuItem(Strings.Tray_NewNote, () => _windowManager.CreateAndShowNew()));
+        menu.Items.Add(BuildTemplateMenu());
         menu.Items.Add(MenuItem(Strings.Tray_OpenMarkdownFile, OpenMarkdownFile));
         menu.Items.Add(MenuItem(Strings.Tray_AllNotes, () => _windowManager.OpenNotesList()));
         menu.Items.Add(MenuItem(Strings.Tray_Settings, () => _windowManager.OpenSettings()));
@@ -130,6 +132,16 @@ public sealed class TrayService : ITrayService
         if (dlg.ShowDialog() != true) return;
         try { await _windowManager.OpenFileAsync(dlg.FileName); }
         catch (Exception ex) { _logger.LogError(ex, "Open markdown file failed"); }
+    }
+
+    private MenuItem BuildTemplateMenu()
+    {
+        var parent = new MenuItem { Header = Strings.Tray_NewFromTemplate };
+        foreach (var template in NoteTemplates.All)
+        {
+            parent.Items.Add(MenuItem(template.Name(), () => _windowManager.CreateAndShowNew(template)));
+        }
+        return parent;
     }
 
     private static MenuItem MenuItem(string header, Action action)

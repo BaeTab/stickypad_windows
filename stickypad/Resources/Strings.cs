@@ -38,6 +38,10 @@ public static class Strings
     public static string NoteList_SelectedFormat => Get(nameof(NoteList_SelectedFormat));
     public static string NoteList_SelectAll => Get(nameof(NoteList_SelectAll));
     public static string NoteList_ClearSelection => Get(nameof(NoteList_ClearSelection));
+    public static string Bulk_Actions => Get(nameof(Bulk_Actions));
+    public static string Bulk_DeleteSelected => Get(nameof(Bulk_DeleteSelected));
+    public static string Bulk_ChangeColor => Get(nameof(Bulk_ChangeColor));
+    public static string Bulk_DeleteConfirmFormat => Get(nameof(Bulk_DeleteConfirmFormat));
     public static string NoteList_TabActive => Get(nameof(NoteList_TabActive));
     public static string NoteList_TabTrash => Get(nameof(NoteList_TabTrash));
     public static string NoteList_EmptyTrashButton => Get(nameof(NoteList_EmptyTrashButton));
@@ -56,6 +60,7 @@ public static class Strings
 
     public static string Tray_Tooltip => Get(nameof(Tray_Tooltip));
     public static string Tray_NewNote => Get(nameof(Tray_NewNote));
+    public static string Tray_NewFromTemplate => Get(nameof(Tray_NewFromTemplate));
     public static string Tray_OpenMarkdownFile => Get(nameof(Tray_OpenMarkdownFile));
     public static string Tray_OpenMarkdownDialogTitle => Get(nameof(Tray_OpenMarkdownDialogTitle));
     public static string Tray_AllNotes => Get(nameof(Tray_AllNotes));
@@ -78,6 +83,8 @@ public static class Strings
     public static string Note_OpenFile => Get(nameof(Note_OpenFile));
     public static string Note_NewNote => Get(nameof(Note_NewNote));
     public static string Note_AllNotes => Get(nameof(Note_AllNotes));
+    public static string Note_More => Get(nameof(Note_More));
+    public static string Note_NewFromTemplate => Get(nameof(Note_NewFromTemplate));
     public static string Note_ExportPrintTooltip => Get(nameof(Note_ExportPrintTooltip));
     public static string Note_ExportPdfMenu => Get(nameof(Note_ExportPdfMenu));
     public static string Note_ExportHtmlMenu => Get(nameof(Note_ExportHtmlMenu));
@@ -155,4 +162,9 @@ public static class Strings
     public static string Update_DownloadFailed => Get(nameof(Update_DownloadFailed));
     public static string Update_ExecutablePathUnknown => Get(nameof(Update_ExecutablePathUnknown));
     public static string Update_ApplyFailed => Get(nameof(Update_ApplyFailed));
+    public static string Update_IntegrityFailed => Get(nameof(Update_IntegrityFailed));
+
+    public static string Template_DailyLog => Get(nameof(Template_DailyLog));
+    public static string Template_Meeting => Get(nameof(Template_Meeting));
+    public static string Template_Todo => Get(nameof(Template_Todo));
 }

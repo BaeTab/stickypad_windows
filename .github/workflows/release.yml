@@ -24,9 +24,15 @@ jobs:
             -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true `
             -p:EnableCompressionInSingleFile=true -o publish
           Copy-Item publish/StickyPad.exe "StickyPad-${{ github.ref_name }}-win-x64.exe"
+          # 무결성 검증용 SHA-256 체크섬 자산 ("<hash>  <filename>" 형식).
+          $exe = "StickyPad-${{ github.ref_name }}-win-x64.exe"
+          $hash = (Get-FileHash $exe -Algorithm SHA256).Hash.ToLower()
+          "$hash  $exe" | Out-File -Encoding ascii "$exe.sha256"
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v3
         with:
-          files: StickyPad-*-win-x64.exe
+          files: |
+            StickyPad-*-win-x64.exe
+            StickyPad-*-win-x64.exe.sha256
           generate_release_notes: true

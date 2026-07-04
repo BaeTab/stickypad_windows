@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -32,7 +33,10 @@ public sealed partial class NotesListViewModel : ObservableObject
     public IReadOnlyList<TagFilter> Tags => _tags;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasSelection))]
     private int _selectedCount;
+
+    public bool HasSelection => SelectedCount > 0;
 
     [ObservableProperty]
     private string _searchText = string.Empty;
@@ -197,6 +201,10 @@ public sealed partial class NotesListViewModel : ObservableObject
     /// 선택된(검색으로 숨겨졌더라도) 노트 총수. 내보내기 대상과 항상 일치한다.
     private void UpdateSelectedCount() => SelectedCount = _selectedIds.Count;
 
+    /// 현재 선택된 활성 노트의 id 목록 (검색으로 숨겨진 것 포함).
+    private IReadOnlyList<Guid> SelectedActiveIds() =>
+        _activeRaw.Where(n => _selectedIds.Contains(n.Id)).Select(n => n.Id).ToList();
+
     [RelayCommand]
     private void Open(NoteSummary? summary)
     {
@@ -292,6 +300,63 @@ public sealed partial class NotesListViewModel : ObservableObject
             return _activeRaw.Where(n => _selectedIds.Contains(n.Id)).Select(n => n.Id).ToList();
         }
         return _items.Select(i => i.Id).ToList();
+    }
+
+    // ── 일괄 작업 ─────────────────────────────────────────────────────────────
+
+    [RelayCommand]
+    private async Task BulkDeleteAsync()
+    {
+        try
+        {
+            var ids = SelectedActiveIds();
+            if (ids.Count == 0) return;
+
+            var result = MessageBox.Show(
+                string.Format(Strings.Bulk_DeleteConfirmFormat, ids.Count),
+                "StickyPad",
+                MessageBoxButton.OKCancel,
+                MessageBoxImage.Warning);
+            if (result != MessageBoxResult.OK) return;
+
+            foreach (var id in ids)
+            {
+                await _repository.DeleteAsync(id).ConfigureAwait(true);
+            }
+
+            _selectedIds.Clear();
+            await ReloadAsync().ConfigureAwait(true);
+            await _windowManager.ReloadAsync().ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Bulk delete failed");
+        }
+    }
+
+    [RelayCommand]
+    private async Task BulkSetColorAsync(NoteColor color)
+    {
+        try
+        {
+            var ids = SelectedActiveIds();
+            if (ids.Count == 0) return;
+
+            foreach (var id in ids)
+            {
+                var note = _activeRaw.FirstOrDefault(n => n.Id == id);
+                if (note is null) continue;
+                note.Color = color;
+                await _repository.SaveContentAsync(note).ConfigureAwait(true);
+            }
+
+            await ReloadAsync().ConfigureAwait(true);
+            await _windowManager.ReloadAsync().ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Bulk color change failed");
+        }
     }
 
     [RelayCommand]

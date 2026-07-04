@@ -5,6 +5,7 @@
     xmlns:res="clr-namespace:StickyPad.Resources"
     xmlns:u="clr-namespace:StickyPad.Utils"
     xmlns:vm="clr-namespace:StickyPad.ViewModels"
+    xmlns:m="clr-namespace:StickyPad.Models"
     Title="{x:Static res:Strings.NoteList_WindowTitle}"
     Width="640"
     Height="540"
@@ -107,10 +108,34 @@
                     Content="{x:Static res:Strings.NoteList_SelectAll}"
                     Cursor="Hand" />
                 <Button
+                    Margin="0,0,4,0"
                     Padding="8,3"
                     Command="{Binding ClearSelectionCommand}"
                     Content="{x:Static res:Strings.NoteList_ClearSelection}"
                     Cursor="Hand" />
+                <Menu
+                    VerticalAlignment="Center"
+                    Background="Transparent">
+                    <MenuItem
+                        Padding="8,3"
+                        IsEnabled="{Binding HasSelection}">
+                        <MenuItem.Header>
+                            <TextBlock>
+                                <Run Text="{x:Static res:Strings.Bulk_Actions}" /><Run Text=" ▾" />
+                            </TextBlock>
+                        </MenuItem.Header>
+                        <MenuItem Command="{Binding BulkDeleteCommand}" Header="{x:Static res:Strings.Bulk_DeleteSelected}" />
+                        <Separator />
+                        <MenuItem Header="{x:Static res:Strings.Bulk_ChangeColor}">
+                            <MenuItem Command="{Binding BulkSetColorCommand}" CommandParameter="{x:Static m:NoteColor.Yellow}" Header="Yellow" />
+                            <MenuItem Command="{Binding BulkSetColorCommand}" CommandParameter="{x:Static m:NoteColor.Pink}" Header="Pink" />
+                            <MenuItem Command="{Binding BulkSetColorCommand}" CommandParameter="{x:Static m:NoteColor.Blue}" Header="Blue" />
+                            <MenuItem Command="{Binding BulkSetColorCommand}" CommandParameter="{x:Static m:NoteColor.Green}" Header="Green" />
+                            <MenuItem Command="{Binding BulkSetColorCommand}" CommandParameter="{x:Static m:NoteColor.Purple}" Header="Purple" />
+                            <MenuItem Command="{Binding BulkSetColorCommand}" CommandParameter="{x:Static m:NoteColor.Gray}" Header="Gray" />
+                        </MenuItem>
+                    </MenuItem>
+                </Menu>
             </StackPanel>
 
             <ToggleButton

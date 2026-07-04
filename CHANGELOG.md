@@ -5,6 +5,16 @@ All notable changes to StickyPad are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This file starts from the point it was introduced — earlier history lives in the git log.
 
+## [1.7.0] - 2026-07-05
+
+### Added
+- **Selection-based bulk actions in the All‑notes window.** Notes can now be checked and, via a "일괄 작업 ▾" (Bulk actions) menu, bulk‑deleted (moved to Trash) or bulk‑recolored in one step.
+- **Note templates.** New notes can be created from a built‑in template (Daily log / Meeting notes / To‑do list), available from a note's **⋯** More menu and the tray's *New note from template* submenu. Templates substitute `{{date}}` with today's date.
+- **Toolbar overflow "⋯" menu.** The note header's less‑used buttons (new note, open file, all notes, export/print, templates) are consolidated into a single **⋯** menu, fixing toolbar clipping at narrow note widths.
+
+### Security
+- **Auto‑update integrity verification.** The updater now verifies the downloaded exe against a published SHA‑256 checksum (a `.sha256` release asset produced by CI) before applying it, and refuses to apply on mismatch or missing checksum (fail‑closed).
+
 ## [1.6.1] - 2026-07-04
 
 ### Security
