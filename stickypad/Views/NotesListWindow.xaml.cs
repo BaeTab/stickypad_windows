@@ -1,5 +1,7 @@
 using System.ComponentModel;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using StickyPad.Utils;
 using StickyPad.ViewModels;
@@ -39,12 +41,24 @@ public partial class NotesListWindow : Window
 
     private void Card_OnMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
+        // 선택 체크박스를 누른 클릭은 노트를 열지 않는다(선택만 토글).
+        if (e.OriginalSource is DependencyObject src && FindAncestor<ToggleButton>(src) is not null) return;
+
         if (sender is FrameworkElement fe && fe.DataContext is NoteSummary summary)
         {
             // 휴지통 카드를 클릭으로 여는 건 의도가 모호하니 무시 — 복원/영구삭제 버튼만 받는다.
             if (summary.IsTrashed) return;
             _viewModel.OpenCommand.Execute(summary);
         }
+    }
+
+    private static T? FindAncestor<T>(DependencyObject start) where T : DependencyObject
+    {
+        for (var node = start; node is not null; node = System.Windows.Media.VisualTreeHelper.GetParent(node))
+        {
+            if (node is T match) return match;
+        }
+        return null;
     }
 
     private void ActiveTab_OnClick(object sender, RoutedEventArgs e)

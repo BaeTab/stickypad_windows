@@ -95,7 +95,8 @@ Switch a note between **Text / Markdown / HTML** and it renders on the spot:
 
 ### Data & backup
 - **Backup export/import** to a portable JSON file (tray menu).
-- **Export notes as text** — dump all active notes to a readable Markdown/`.txt` file (tray menu or the All‑notes window's *내보내기* button).
+- **Export notes as text** — dump all active notes to a readable Markdown/`.txt` file (tray menu).
+- **Export from the All‑notes window** — the *내보내기 ▾* button exports the selected notes (or the current filtered list, if nothing is selected) as a single styled **HTML** document, a single **PDF** (rendered via an offscreen WebView2), or **one Markdown file per note** (with YAML front matter) into a folder you choose.
 - **Recycle Bin** — deleted notes are soft‑deleted, restorable, and permanently purged after 30 days (a cleanup also runs at startup).
 - **Rolling logs** kept for 7 days for troubleshooting.
 
@@ -157,6 +158,7 @@ Open `stickypad.sln` in Visual Studio 2022 (17.8+) if you prefer the IDE.
 - **Tag it:** type `#idea`, `#todo`, `#work` anywhere in the body — tags appear in the All‑notes sidebar.
 - **Link notes:** write `[[Project ideas]]`; it becomes a clickable link that opens the note titled "Project ideas".
 - **Find anything:** press `Ctrl+Shift+L`, type in the search box — title, tags, and body are searched with highlights.
+- **Export a batch of notes:** in the All‑notes window, tick the checkbox on each note card you want (selection persists across search/filter, with a "N개 선택됨" count and *전체 선택*/*선택 해제*), then *내보내기 ▾* → **HTML 문서로…**, **PDF로…**, or **노트별 Markdown 파일로…**. With nothing ticked, it exports the currently filtered list instead.
 - **Recolor / pin / fade:** use the note's hover toolbar to switch color, pin it on top, or adjust opacity.
 - **Delete safely:** deleting moves a note to the **Trash** tab; restore it there, or empty the bin. Anything left 30 days is purged automatically.
 - **Back up:** tray menu → *Export backup…* writes a JSON file; *Import backup…* restores it (notes with the same id are overwritten).

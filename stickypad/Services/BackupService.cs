@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -8,6 +9,7 @@ using System.Windows;
 using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
 using StickyPad.Models;
+using StickyPad.Utils;
 
 namespace StickyPad.Services;
 
@@ -89,6 +91,179 @@ public sealed class BackupService : IBackupService
         await File.WriteAllTextAsync(dlg.FileName, sb.ToString()).ConfigureAwait(true);
         _logger.LogInformation("Exported {Count} notes as text to {Path}", notes.Count, dlg.FileName);
     }
+
+    public async Task ExportNotesAsync(IReadOnlyList<Guid> noteIds, ExportFormat format)
+    {
+        if (noteIds is null || noteIds.Count == 0) return;
+
+        var all = await _repository.GetAllAsync().ConfigureAwait(true);
+        var byId = all.ToDictionary(n => n.Id);
+        // 선택 순서를 유지하고, 그 사이 삭제된 id 는 조용히 건너뛴다.
+        var notes = noteIds.Where(byId.ContainsKey).Select(id => byId[id]).ToList();
+        if (notes.Count == 0)
+        {
+            MessageBox.Show("내보낼 노트를 찾을 수 없습니다.", "StickyPad",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        switch (format)
+        {
+            case ExportFormat.MarkdownFiles: await ExportAsMarkdownFilesAsync(notes).ConfigureAwait(true); break;
+            case ExportFormat.Html: await ExportAsHtmlAsync(notes).ConfigureAwait(true); break;
+            case ExportFormat.Pdf: await ExportAsPdfAsync(notes).ConfigureAwait(true); break;
+        }
+    }
+
+    private async Task ExportAsMarkdownFilesAsync(IReadOnlyList<Note> notes)
+    {
+        var dlg = new OpenFolderDialog { Title = "노트를 저장할 폴더 선택" };
+        if (dlg.ShowDialog() != true) return;
+        var folder = dlg.FolderName;
+
+        // 폴더에 이미 있는 파일명을 미리 예약해 둔다 — 같은 이름의 기존 파일을 덮어쓰지 않도록.
+        var taken = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        try
+        {
+            foreach (var existing in Directory.EnumerateFiles(folder))
+            {
+                taken.Add(Path.GetFileName(existing).ToLowerInvariant());
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not enumerate target folder before export: {Folder}", folder);
+        }
+
+        var count = 0;
+        var failures = new List<string>();
+        foreach (var note in notes)
+        {
+            var baseName = ExportNaming.SafeFileName(note.Title);
+            var fileName = ExportNaming.UniqueFileName(baseName, ".md", taken);
+            try
+            {
+                await File.WriteAllTextAsync(Path.Combine(folder, fileName), BuildMarkdown(note)).ConfigureAwait(true);
+                count++;
+            }
+            catch (Exception ex)
+            {
+                // 한 노트가 실패해도 나머지는 계속 저장하고, 마지막에 실패 목록을 보고한다.
+                _logger.LogError(ex, "Failed to write note {Id} to {File}", note.Id, fileName);
+                failures.Add(fileName);
+            }
+        }
+
+        _logger.LogInformation("Exported {Count}/{Total} notes as .md files to {Folder}", count, notes.Count, folder);
+        if (failures.Count == 0)
+        {
+            MessageBox.Show($"{count}개 노트를 Markdown 파일로 저장했습니다.\n{folder}", "StickyPad",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        else
+        {
+            var list = string.Join(", ", failures.Take(5)) + (failures.Count > 5 ? " …" : "");
+            MessageBox.Show(
+                $"{count}개 저장 완료, {failures.Count}개 실패했습니다.\n실패한 파일: {list}",
+                "StickyPad", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private async Task ExportAsHtmlAsync(IReadOnlyList<Note> notes)
+    {
+        var dlg = new SaveFileDialog
+        {
+            Filter = "HTML 문서 (*.html)|*.html",
+            FileName = $"stickypad-notes-{DateTime.Now:yyyyMMdd-HHmmss}.html",
+            Title = "HTML로 내보내기",
+        };
+        if (dlg.ShowDialog() != true) return;
+
+        var html = HtmlRenderer.RenderDocument(notes, "StickyPad 노트");
+        try
+        {
+            await File.WriteAllTextAsync(dlg.FileName, html).ConfigureAwait(true);
+            _logger.LogInformation("Exported {Count} notes as HTML to {Path}", notes.Count, dlg.FileName);
+            MessageBox.Show($"{notes.Count}개 노트를 HTML로 저장했습니다.\n{dlg.FileName}", "StickyPad",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "HTML export failed");
+            MessageBox.Show("HTML로 내보내기에 실패했습니다.\n\n" + ex.Message, "StickyPad",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private async Task ExportAsPdfAsync(IReadOnlyList<Note> notes)
+    {
+        var dlg = new SaveFileDialog
+        {
+            Filter = "PDF 문서 (*.pdf)|*.pdf",
+            FileName = $"stickypad-notes-{DateTime.Now:yyyyMMdd-HHmmss}.pdf",
+            Title = "PDF로 내보내기",
+        };
+        if (dlg.ShowDialog() != true) return;
+
+        var html = HtmlRenderer.RenderDocument(notes, "StickyPad 노트");
+        try
+        {
+            await PdfRenderer.RenderAsync(html, dlg.FileName).ConfigureAwait(true);
+            _logger.LogInformation("Exported {Count} notes as PDF to {Path}", notes.Count, dlg.FileName);
+            MessageBox.Show($"{notes.Count}개 노트를 PDF로 저장했습니다.\n{dlg.FileName}", "StickyPad",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "PDF export failed");
+            MessageBox.Show(
+                "PDF로 내보내기에 실패했습니다. WebView2 런타임이 설치돼 있는지 확인해 주세요.\n\n" + ex.Message,
+                "StickyPad", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    /// 노트 1개를 YAML 프런트매터 + 본문의 .md 텍스트로 만든다.
+    private static string BuildMarkdown(Note note)
+    {
+        var sb = new StringBuilder();
+        var title = string.IsNullOrWhiteSpace(note.Title) ? "(제목 없음)" : note.Title;
+
+        sb.Append("---\n");
+        sb.Append("title: ").Append(YamlScalar(title)).Append('\n');
+        if (note.Tags is { Count: > 0 })
+        {
+            sb.Append("tags: [").Append(string.Join(", ", note.Tags.Select(YamlScalar))).Append("]\n");
+        }
+        sb.Append("color: ").Append(note.Color).Append('\n');
+        sb.Append("created: ").Append(note.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")).Append('\n');
+        sb.Append("modified: ").Append(note.ModifiedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")).Append('\n');
+        sb.Append("---\n\n");
+
+        var body = note.Format switch
+        {
+            // Markdown/HTML 노트는 원본 소스를 그대로(HTML 은 .md 안에서도 유효).
+            NoteContentFormat.Markdown or NoteContentFormat.Html => note.Content ?? string.Empty,
+            // PlainText/RichTextXaml 은 사람이 읽는 PlainText 투영을 쓴다(XAML 원본을 넣지 않는다).
+            _ => note.PlainText ?? string.Empty,
+        };
+        sb.Append(body.Replace("\r\n", "\n").TrimEnd()).Append('\n');
+        return sb.ToString();
+    }
+
+    /// YAML 값에 특수문자가 있으면 큰따옴표로 감싸 안전하게 만든다.
+    private static string YamlScalar(string value)
+    {
+        value = value.Replace("\r", " ").Replace("\n", " ");
+        if (value.Length == 0) return "\"\"";
+
+        var needsQuote = value[0] == ' ' || value[^1] == ' ' ||
+            value.IndexOfAny(YamlSpecials) >= 0;
+        if (!needsQuote) return value;
+        return "\"" + value.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\"";
+    }
+
+    private static readonly char[] YamlSpecials =
+        { ':', '#', '"', '\'', '[', ']', '{', '}', ',', '&', '*', '!', '|', '>', '%', '@', '`' };
 
     public async Task ImportInteractiveAsync()
     {

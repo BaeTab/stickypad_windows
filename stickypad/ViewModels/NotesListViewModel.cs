@@ -24,8 +24,14 @@ public sealed partial class NotesListViewModel : ObservableObject
     private readonly ObservableCollection<NoteSummary> _items = new();
     private readonly ObservableCollection<TagFilter> _tags = new();
 
+    /// 내보내기용 선택 상태를 노트 id 로 보관 — 검색·필터로 목록이 재구성돼도 선택이 유지된다.
+    private readonly HashSet<Guid> _selectedIds = new();
+
     public ObservableCollection<NoteSummary> Items => _items;
     public IReadOnlyList<TagFilter> Tags => _tags;
+
+    [ObservableProperty]
+    private int _selectedCount;
 
     [ObservableProperty]
     private string _searchText = string.Empty;
@@ -92,6 +98,9 @@ public sealed partial class NotesListViewModel : ObservableObject
             _trashedRaw.Clear();
             _trashedRaw.AddRange(trashed);
 
+            // 삭제되어 더는 활성이 아닌 노트의 선택은 정리 — 카운트와 내보내기 대상을 일치시킨다.
+            _selectedIds.IntersectWith(_activeRaw.Select(n => n.Id));
+
             // 태그 카운트는 활성 노트만 대상으로.
             var tagCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
             foreach (var note in active)
@@ -142,7 +151,7 @@ public sealed partial class NotesListViewModel : ObservableObject
             if (!match.Matched) continue;
 
             var theme = NotePalette.For(note.Color);
-            results.Add(new NoteSummary(
+            var summary = new NoteSummary(
                 Id: note.Id,
                 Title: title,
                 Excerpt: excerpt,
@@ -157,7 +166,11 @@ public sealed partial class NotesListViewModel : ObservableObject
                 TitleSegments: SearchMatcher.Highlight(title, tokens),
                 ExcerptSegments: SearchMatcher.Highlight(excerpt, tokens),
                 TagSegments: SearchMatcher.Highlight(tagsLine, tokens),
-                Score: match.Score));
+                Score: match.Score);
+            // 선택 상태 복원은 구독 전에 — 여기서의 세팅이 핸들러 부수효과를 일으키지 않게.
+            summary.IsSelected = _selectedIds.Contains(note.Id);
+            summary.PropertyChanged += OnSummarySelectionChanged;
+            results.Add(summary);
         }
 
         IEnumerable<NoteSummary> ordered = tokens.Count == 0
@@ -169,7 +182,19 @@ public sealed partial class NotesListViewModel : ObservableObject
         {
             _items.Add(item);
         }
+        UpdateSelectedCount();
     }
+
+    private void OnSummarySelectionChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(NoteSummary.IsSelected) || sender is not NoteSummary summary) return;
+        if (summary.IsSelected) _selectedIds.Add(summary.Id);
+        else _selectedIds.Remove(summary.Id);
+        UpdateSelectedCount();
+    }
+
+    /// 선택된(검색으로 숨겨졌더라도) 노트 총수. 내보내기 대상과 항상 일치한다.
+    private void UpdateSelectedCount() => SelectedCount = _selectedIds.Count;
 
     [RelayCommand]
     private void Open(NoteSummary? summary)
@@ -218,11 +243,54 @@ public sealed partial class NotesListViewModel : ObservableObject
     [RelayCommand]
     private void NewNote() => _windowManager.CreateAndShowNew();
 
+    // ── 선택 & 내보내기 ───────────────────────────────────────────────────────
+
     [RelayCommand]
-    private async Task ExportTextAsync()
+    private void SelectAll()
     {
-        try { await _backupService.ExportNotesAsTextAsync().ConfigureAwait(true); }
-        catch (Exception ex) { _logger.LogError(ex, "Failed to export notes as text"); }
+        foreach (var item in _items) item.IsSelected = true;
+    }
+
+    [RelayCommand]
+    private void ClearSelection()
+    {
+        foreach (var item in _items) item.IsSelected = false;
+        _selectedIds.Clear();   // 검색으로 숨겨진 선택까지 모두 해제.
+        UpdateSelectedCount();
+    }
+
+    [RelayCommand]
+    private Task ExportMarkdownFiles() => ExportAsync(ExportFormat.MarkdownFiles);
+
+    [RelayCommand]
+    private Task ExportHtml() => ExportAsync(ExportFormat.Html);
+
+    [RelayCommand]
+    private Task ExportPdf() => ExportAsync(ExportFormat.Pdf);
+
+    private async Task ExportAsync(ExportFormat format)
+    {
+        try
+        {
+            var ids = ExportTargetIds();
+            if (ids.Count == 0) return;
+            await _backupService.ExportNotesAsync(ids, format).ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Export failed ({Format})", format);
+        }
+    }
+
+    /// 선택된 노트가 있으면 그 노트들을(검색으로 숨겨진 것 포함, 목록 순서대로),
+    /// 없으면 현재 보이는(필터된) 전체를 대상으로 한다.
+    private IReadOnlyList<Guid> ExportTargetIds()
+    {
+        if (_selectedIds.Count > 0)
+        {
+            return _activeRaw.Where(n => _selectedIds.Contains(n.Id)).Select(n => n.Id).ToList();
+        }
+        return _items.Select(i => i.Id).ToList();
     }
 
     [RelayCommand]

@@ -389,3 +389,104 @@ public class LinkedFileTests
         }
     }
 }
+
+public class ExportNamingTests
+{
+    [Theory]
+    [InlineData("Shopping list", "Shopping list")]
+    [InlineData("a/b:c*d?", "a_b_c_d_")]           // 금지 문자는 _ 로
+    [InlineData("///", "___")]                      // 전부 금지 문자여도 _ 로 치환되면 유효
+    [InlineData("  spaced  ", "spaced")]            // 앞뒤 공백 제거
+    [InlineData("trailing...", "trailing")]         // 끝의 점 제거
+    public void SafeFileName_Sanitizes(string title, string expected)
+    {
+        Assert.Equal(expected, ExportNaming.SafeFileName(title));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]      // 공백만 → 비면 fallback
+    [InlineData("...")]      // 점만 → 트림하면 비어 fallback
+    public void SafeFileName_FallsBackWhenEmpty(string title)
+    {
+        Assert.Equal("note", ExportNaming.SafeFileName(title));
+    }
+
+    [Fact]
+    public void SafeFileName_CapsLength()
+    {
+        var name = ExportNaming.SafeFileName(new string('x', 500));
+        Assert.True(name.Length <= 80);
+    }
+
+    [Theory]
+    [InlineData("CON", "_CON")]
+    [InlineData("nul", "_nul")]
+    [InlineData("COM1", "_COM1")]
+    [InlineData("Contract", "Contract")]   // 예약어의 접두사일 뿐이면 그대로
+    public void SafeFileName_EscapesReservedDeviceNames(string title, string expected)
+    {
+        Assert.Equal(expected, ExportNaming.SafeFileName(title));
+    }
+
+    [Fact]
+    public void UniqueFileName_DisambiguatesCollisions()
+    {
+        var taken = new HashSet<string>();
+        Assert.Equal("note.md", ExportNaming.UniqueFileName("note", ".md", taken));
+        Assert.Equal("note (2).md", ExportNaming.UniqueFileName("note", ".md", taken));
+        Assert.Equal("note (3).md", ExportNaming.UniqueFileName("note", ".md", taken));
+        Assert.Equal("other.md", ExportNaming.UniqueFileName("other", "md", taken)); // 앞에 점 없어도 됨
+    }
+}
+
+public class HtmlRendererDocumentTests
+{
+    private static Note PlainNote(string title, string plain) => new()
+    {
+        Title = title,
+        PlainText = plain,
+        Format = NoteContentFormat.PlainText,
+        Content = plain,
+    };
+
+    [Fact]
+    public void RenderDocument_IncludesTitlesAndDocHeading()
+    {
+        var notes = new[] { PlainNote("First", "one"), PlainNote("Second", "two") };
+        var html = HtmlRenderer.RenderDocument(notes, "내 노트");
+
+        Assert.Contains("내 노트", html);
+        Assert.Contains(">First<", html);
+        Assert.Contains(">Second<", html);
+        // 노트마다 article 하나씩.
+        Assert.Equal(2, System.Text.RegularExpressions.Regex.Matches(html, "<article").Count);
+    }
+
+    [Fact]
+    public void RenderDocument_EscapesPlainTextBody()
+    {
+        var notes = new[] { PlainNote("XSS", "<script>alert(1)</script>") };
+        var html = HtmlRenderer.RenderDocument(notes, "doc");
+
+        // PlainText 본문은 이스케이프돼 실행 가능한 태그가 남지 않아야 한다.
+        Assert.DoesNotContain("<script>alert(1)</script>", html);
+        Assert.Contains("&lt;script&gt;", html);
+    }
+
+    [Fact]
+    public void RenderDocument_RendersMarkdownBody()
+    {
+        var note = new Note
+        {
+            Title = "MD",
+            Format = NoteContentFormat.Markdown,
+            Content = "# Heading\n\n- item",
+            PlainText = "Heading\nitem",
+        };
+        var html = HtmlRenderer.RenderDocument(new[] { note }, "doc");
+
+        Assert.Contains("<h1", html);   // Markdig 로 헤딩 렌더
+        Assert.Contains("<li", html);   // 목록 렌더
+    }
+}

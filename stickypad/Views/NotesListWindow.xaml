@@ -66,12 +66,21 @@
                 Foreground="#666"
                 Text="{Binding TotalCount, StringFormat={}{0} total}" />
             <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
-                <Button
+                <Menu
                     Margin="0,0,6,0"
-                    Padding="10,4"
-                    Command="{Binding ExportTextCommand}"
-                    Content="내보내기"
-                    ToolTip="메모를 마크다운/텍스트 파일로 내보내기" />
+                    VerticalAlignment="Center"
+                    Background="Transparent"
+                    Visibility="{Binding ShowTrash, Converter={StaticResource InverseBoolToVis}}">
+                    <MenuItem
+                        Padding="10,4"
+                        Header="내보내기 ▾"
+                        ToolTip="선택한 노트(없으면 현재 목록 전체)를 HTML · PDF · Markdown 파일로 내보내기">
+                        <MenuItem Command="{Binding ExportHtmlCommand}" Header="HTML 문서로…" />
+                        <MenuItem Command="{Binding ExportPdfCommand}" Header="PDF로…" />
+                        <Separator />
+                        <MenuItem Command="{Binding ExportMarkdownFilesCommand}" Header="노트별 Markdown 파일로…" />
+                    </MenuItem>
+                </Menu>
                 <Button
                     Padding="12,4"
                     Command="{Binding NewNoteCommand}"
@@ -79,7 +88,30 @@
             </StackPanel>
         </DockPanel>
 
-        <StackPanel Grid.Row="1" Margin="0,12,0,0" Orientation="Horizontal">
+        <DockPanel Grid.Row="1" Margin="0,12,0,0" LastChildFill="False">
+            <!-- 선택 도구 (활성 탭에서만) -->
+            <StackPanel
+                DockPanel.Dock="Right"
+                Orientation="Horizontal"
+                Visibility="{Binding ShowTrash, Converter={StaticResource InverseBoolToVis}}">
+                <TextBlock
+                    Margin="0,0,10,0"
+                    VerticalAlignment="Center"
+                    Foreground="#666"
+                    Text="{Binding SelectedCount, StringFormat={}{0}개 선택됨}" />
+                <Button
+                    Margin="0,0,4,0"
+                    Padding="8,3"
+                    Command="{Binding SelectAllCommand}"
+                    Content="전체 선택"
+                    Cursor="Hand" />
+                <Button
+                    Padding="8,3"
+                    Command="{Binding ClearSelectionCommand}"
+                    Content="선택 해제"
+                    Cursor="Hand" />
+            </StackPanel>
+
             <ToggleButton
                 Content="활성"
                 IsChecked="{Binding ShowTrash, Mode=OneWay, Converter={StaticResource InverseBool}}"
@@ -102,7 +134,7 @@
                 Content="휴지통 비우기"
                 Cursor="Hand"
                 Visibility="{Binding ShowTrash, Converter={StaticResource BoolToVis}}" />
-        </StackPanel>
+        </DockPanel>
 
         <TextBox
             x:Name="SearchBox"
@@ -159,27 +191,46 @@
                     <DataTemplate DataType="{x:Type vm:NoteSummary}">
                         <Border
                             Padding="12,10"
-                            Background="White"
-                            BorderBrush="#E5E5E5"
-                            BorderThickness="1"
                             CornerRadius="6"
                             MouseLeftButtonUp="Card_OnMouseLeftButtonUp">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Background" Value="White" />
+                                    <Setter Property="BorderBrush" Value="#E5E5E5" />
+                                    <Setter Property="BorderThickness" Value="1" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                            <Setter Property="Background" Value="#EAF3FF" />
+                                            <Setter Property="BorderBrush" Value="#1976D2" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
                             <Grid>
                                 <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="6" />
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
 
-                                <Rectangle
+                                <CheckBox
                                     Grid.Column="0"
+                                    VerticalAlignment="Center"
+                                    Margin="2,0,6,0"
+                                    IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                    ToolTip="내보내기 대상으로 선택"
+                                    Visibility="{Binding IsTrashed, Converter={StaticResource InverseBoolToVis}}" />
+
+                                <Rectangle
+                                    Grid.Column="1"
                                     Width="4"
                                     HorizontalAlignment="Left"
                                     Fill="{Binding AccentBrush}"
                                     RadiusX="2"
                                     RadiusY="2" />
 
-                                <StackPanel Grid.Column="1" Margin="10,0,0,0">
+                                <StackPanel Grid.Column="2" Margin="10,0,0,0">
                                     <TextBlock
                                         FontSize="14"
                                         FontWeight="SemiBold"
@@ -201,7 +252,7 @@
                                 </StackPanel>
 
                                 <StackPanel
-                                    Grid.Column="2"
+                                    Grid.Column="3"
                                     VerticalAlignment="Top"
                                     Orientation="Horizontal">
                                     <StackPanel Margin="0,2,8,0" HorizontalAlignment="Right">
