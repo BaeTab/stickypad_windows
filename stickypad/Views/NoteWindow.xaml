@@ -266,6 +266,21 @@
                             ToolTip="All notes (Ctrl+Shift+L)"
                             Content="≡" />
                         <Button
+                            Style="{StaticResource ChromeButton}"
+                            ToolTip="내보내기 · 인쇄"
+                            Click="ExportMenu_OnClick"
+                            Content="⤓">
+                            <Button.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Header="PDF로 저장…" Click="ExportNotePdf_OnClick" />
+                                    <MenuItem Header="HTML로 저장…" Click="ExportNoteHtml_OnClick" />
+                                    <MenuItem Header="Markdown으로 저장…" Click="ExportNoteMarkdown_OnClick" />
+                                    <Separator />
+                                    <MenuItem Header="인쇄…" Click="PrintNote_OnClick" />
+                                </ContextMenu>
+                            </Button.ContextMenu>
+                        </Button>
+                        <Button
                             Click="DeleteButton_OnClick"
                             Style="{StaticResource ChromeButton}"
                             ToolTip="Delete note"

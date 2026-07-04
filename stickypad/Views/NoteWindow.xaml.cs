@@ -13,6 +13,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Navigation;
 using System.Windows.Threading;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
 using Microsoft.Win32;
@@ -714,6 +715,46 @@ public partial class NoteWindow : Window
             MessageBoxResult.Cancel);
         if (confirm != MessageBoxResult.OK) return;
         await _viewModel.DeleteCommand.ExecuteAsync(null).ConfigureAwait(true);
+    }
+
+    private void ExportMenu_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is System.Windows.Controls.Button { ContextMenu: { } menu } b)
+        {
+            menu.PlacementTarget = b;
+            menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+            menu.IsOpen = true;
+        }
+    }
+
+    private async void ExportNotePdf_OnClick(object sender, RoutedEventArgs e) => await ExportCurrentNoteAsync(ExportFormat.Pdf);
+    private async void ExportNoteHtml_OnClick(object sender, RoutedEventArgs e) => await ExportCurrentNoteAsync(ExportFormat.Html);
+    private async void ExportNoteMarkdown_OnClick(object sender, RoutedEventArgs e) => await ExportCurrentNoteAsync(ExportFormat.MarkdownFiles);
+
+    private async Task ExportCurrentNoteAsync(ExportFormat format)
+    {
+        try
+        {
+            await _viewModel.FlushAsync().ConfigureAwait(true); // 최신 내용 반영
+            await App.Services.GetRequiredService<IBackupService>().ExportSingleNoteAsync(_viewModel.Note, format).ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, "내보내기에 실패했습니다:\n" + ex.Message, "StickyPad", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private async void PrintNote_OnClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            await _viewModel.FlushAsync().ConfigureAwait(true);
+            await App.Services.GetRequiredService<IBackupService>().PrintNoteAsync(_viewModel.Note).ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, "인쇄에 실패했습니다:\n" + ex.Message, "StickyPad", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
     }
 
     private void ColorSwatch_OnClick(object sender, RoutedEventArgs e)

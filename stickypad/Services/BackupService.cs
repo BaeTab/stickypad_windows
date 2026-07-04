@@ -7,6 +7,8 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows;
 using Microsoft.Extensions.Logging;
+using Microsoft.Web.WebView2.Core;
+using Microsoft.Web.WebView2.Wpf;
 using Microsoft.Win32;
 using StickyPad.Models;
 using StickyPad.Utils;
@@ -219,6 +221,136 @@ public sealed class BackupService : IBackupService
             MessageBox.Show(
                 "PDF로 내보내기에 실패했습니다. WebView2 런타임이 설치돼 있는지 확인해 주세요.\n\n" + ex.Message,
                 "StickyPad", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    public async Task ExportSingleNoteAsync(Note note, ExportFormat format)
+    {
+        var safe = ExportNaming.SafeFileName(note.Title);
+        var docTitle = string.IsNullOrWhiteSpace(note.Title) ? "StickyPad 노트" : note.Title;
+
+        switch (format)
+        {
+            case ExportFormat.Html:
+            {
+                var dlg = new SaveFileDialog
+                {
+                    Filter = "HTML 문서 (*.html)|*.html",
+                    FileName = safe + ".html",
+                    Title = "HTML로 내보내기",
+                };
+                if (dlg.ShowDialog() != true) return;
+
+                try
+                {
+                    await File.WriteAllTextAsync(dlg.FileName, HtmlRenderer.RenderDocument(new[] { note }, docTitle))
+                        .ConfigureAwait(true);
+                    _logger.LogInformation("Exported note {Id} as HTML to {Path}", note.Id, dlg.FileName);
+                    MessageBox.Show($"HTML로 저장했습니다.\n{dlg.FileName}", "StickyPad",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Single-note HTML export failed");
+                    MessageBox.Show("HTML로 내보내기에 실패했습니다.\n\n" + ex.Message, "StickyPad",
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+                break;
+            }
+            case ExportFormat.Pdf:
+            {
+                var dlg = new SaveFileDialog
+                {
+                    Filter = "PDF 문서 (*.pdf)|*.pdf",
+                    FileName = safe + ".pdf",
+                    Title = "PDF로 내보내기",
+                };
+                if (dlg.ShowDialog() != true) return;
+
+                try
+                {
+                    await PdfRenderer.RenderAsync(HtmlRenderer.RenderDocument(new[] { note }, docTitle), dlg.FileName)
+                        .ConfigureAwait(true);
+                    _logger.LogInformation("Exported note {Id} as PDF to {Path}", note.Id, dlg.FileName);
+                    MessageBox.Show($"PDF로 저장했습니다.\n{dlg.FileName}", "StickyPad",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Single-note PDF export failed");
+                    MessageBox.Show(
+                        "PDF로 내보내기에 실패했습니다. WebView2 런타임이 설치돼 있는지 확인해 주세요.\n\n" + ex.Message,
+                        "StickyPad", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+                break;
+            }
+            case ExportFormat.MarkdownFiles:
+            {
+                var dlg = new SaveFileDialog
+                {
+                    Filter = "Markdown (*.md)|*.md",
+                    FileName = safe + ".md",
+                    Title = "Markdown으로 내보내기",
+                };
+                if (dlg.ShowDialog() != true) return;
+
+                try
+                {
+                    await File.WriteAllTextAsync(dlg.FileName, BuildMarkdown(note)).ConfigureAwait(true);
+                    _logger.LogInformation("Exported note {Id} as Markdown to {Path}", note.Id, dlg.FileName);
+                    MessageBox.Show($"Markdown으로 저장했습니다.\n{dlg.FileName}", "StickyPad",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Single-note Markdown export failed");
+                    MessageBox.Show("Markdown으로 내보내기에 실패했습니다.\n\n" + ex.Message, "StickyPad",
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+                break;
+            }
+        }
+    }
+
+    public async Task PrintNoteAsync(Note note)
+    {
+        var docTitle = string.IsNullOrWhiteSpace(note.Title) ? "StickyPad 노트" : note.Title;
+        var html = HtmlRenderer.RenderDocument(new[] { note }, docTitle);
+        var tmp = Path.Combine(Path.GetTempPath(), $"stickypad-print-{Guid.NewGuid():N}.html");
+        await File.WriteAllTextAsync(tmp, html).ConfigureAwait(true);
+
+        var udf = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "StickyPad", "WebView2-export");
+        Directory.CreateDirectory(udf);
+
+        var web = new WebView2 { CreationProperties = new CoreWebView2CreationProperties { UserDataFolder = udf } };
+        var host = new Window
+        {
+            Title = "StickyPad — 인쇄",
+            Width = 860,
+            Height = 1000,
+            WindowStartupLocation = WindowStartupLocation.CenterScreen,
+            Content = web,
+        };
+        host.Closed += (_, _) => { try { web.Dispose(); } catch { } try { File.Delete(tmp); } catch { } };
+        host.Show();
+        try
+        {
+            await web.EnsureCoreWebView2Async().ConfigureAwait(true);
+            var s = web.CoreWebView2.Settings;
+            s.IsScriptEnabled = false; s.AreHostObjectsAllowed = false; s.IsWebMessageEnabled = false;
+            var nav = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            web.NavigationCompleted += (_, e) => nav.TrySetResult(e.IsSuccess);
+            web.CoreWebView2.Navigate(new Uri(tmp).AbsoluteUri);
+            await nav.Task.ConfigureAwait(true);
+            web.CoreWebView2.ShowPrintUI(CoreWebView2PrintDialogKind.Browser);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Print failed");
+            MessageBox.Show("인쇄 준비에 실패했습니다.\n\n" + ex.Message, "StickyPad",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            host.Close();
         }
     }
 
