@@ -43,6 +43,7 @@ StickyPad lives in your system tray and puts a note on your desktop in a single 
 - 🗑️ **Safe deletes** — a Recycle Bin keeps deleted notes for 30 days before auto‑purging.
 - 🖥️ **Stays out of the way** — tray icon, per‑note opacity, always‑on‑top pin, multi‑monitor aware.
 - 💾 **Local‑first** — an embedded LiteDB file on your machine, with one‑click JSON backup export/import.
+- 🌐 **Bilingual UI** — English & Korean; auto-detects your Windows language and switchable in Settings.
 
 ## Screenshots
 
@@ -94,11 +95,13 @@ Switch a note between **Text / Markdown / HTML** and it renders on the spot:
 - **Automatic updates** — on launch (and from the tray's *Check for updates…*) StickyPad checks GitHub Releases and, with your OK, downloads the new build and self‑replaces on restart. Toggle it in Settings.
 - **Single instance** — launching again just surfaces the running app (and forwards any file passed on the command line to it, so double‑clicking an `.md` opens it in the running instance).
 - **`.md` file association** — StickyPad registers itself (per‑user, no admin) in the Windows *Open with* list for `.md`/`.markdown`, without hijacking your default editor.
+- **Language** — English or Korean UI; follows Windows by default, change it in **Settings** (takes effect after restart).
 
 ### Data & backup
 - **Backup export/import** to a portable JSON file (tray menu).
 - **Export notes as text** — dump all active notes to a readable Markdown/`.txt` file (tray menu).
 - **Export from the All‑notes window** — the *내보내기 ▾* button exports the selected notes (or the current filtered list, if nothing is selected) as a single styled **HTML** document, a single **PDF** (rendered via an offscreen WebView2), or **one Markdown file per note** (with YAML front matter) into a folder you choose.
+- **Export/print a single note** — from a note's header **⤓** menu, save the current note as PDF, HTML, or Markdown, or send it to the printer.
 - **Recycle Bin** — deleted notes are soft‑deleted, restorable, and permanently purged after 30 days (a cleanup also runs at startup).
 - **Rolling logs** kept for 7 days for troubleshooting.
 
