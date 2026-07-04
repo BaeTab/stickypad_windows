@@ -65,10 +65,12 @@ public static class HtmlRenderer
     {
         var sb = new StringBuilder();
         sb.Append("<!DOCTYPE html><html><head><meta charset=\"utf-8\">");
-        // 노트 렌더와 동일한 방어적 CSP — 스크립트/오브젝트/프레임 없음, 인라인 스타일과 이미지·폰트만.
+        // 방어적 CSP — 스크립트/오브젝트/프레임 없음, 인라인 스타일과 data: 리소스만.
+        // 내보낸 문서는 공유·인쇄되므로 원격(http/https) 이미지·폰트·미디어를 막아
+        // 추적픽셀·SSRF·평문 요청이 자동으로 나가지 않게 한다(임베드된 data: 이미지는 정상 표시).
         sb.Append("<meta http-equiv=\"Content-Security-Policy\" content=\"")
-          .Append("default-src 'none'; img-src data: https: http:; media-src data: https: http:; ")
-          .Append("style-src 'unsafe-inline'; font-src data: https:;\">");
+          .Append("default-src 'none'; img-src data:; media-src data:; ")
+          .Append("style-src 'unsafe-inline'; font-src data:;\">");
         sb.Append("<meta name=\"color-scheme\" content=\"light\">");
         sb.Append("<title>").Append(WebUtility.HtmlEncode(documentTitle)).Append("</title>");
         sb.Append("<style>").Append(DocumentCss).Append("</style></head><body>");

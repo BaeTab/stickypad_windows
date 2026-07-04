@@ -31,6 +31,13 @@ public static class TextExtraction
                 return Regex.Replace(content, "<[^>]+>", string.Empty);
 
             case NoteContentFormat.RichTextXaml:
+                // 보안: TextRange.Load 는 비제한 XAML 파서를 써서 ObjectDataProvider 등 가젯이
+                // 코드 실행을 일으킬 수 있다. 정상 저장된 FlowDocument XAML 에는 없는 마커가 보이면
+                // 파서에 넘기지 않고 태그 제거 텍스트로 대체한다.
+                if (ContainsDangerousXaml(content))
+                {
+                    return Regex.Replace(content, "<[^>]+>", string.Empty);
+                }
                 try
                 {
                     var doc = new FlowDocument();
@@ -49,6 +56,17 @@ public static class TextExtraction
                 return content;
         }
     }
+
+    // 정상 저장된 리치텍스트(FlowDocument) XAML 에는 절대 등장하지 않지만, XAML 코드 실행
+    // 가젯(ObjectDataProvider, x:Static 등)이나 임의 타입 매핑(clr-namespace)에는 필요한 마커.
+    private static readonly string[] DangerousXamlMarkers =
+        { "ObjectDataProvider", "x:Static", "x:Code", "x:FactoryMethod", "clr-namespace" };
+
+    /// 신뢰할 수 없는 XAML 을 비제한 파서(TextRange.Load)에 넘기기 전 걸러내는 보수적 검사.
+    /// 하나라도 걸리면 XAML 로 처리하지 않는다. 정상 노트에는 오탐이 없다.
+    public static bool ContainsDangerousXaml(string? xaml) =>
+        xaml is not null &&
+        DangerousXamlMarkers.Any(m => xaml.Contains(m, StringComparison.OrdinalIgnoreCase));
 
     public static string DeriveTitle(string plainText)
     {

@@ -5,6 +5,7 @@ using System.Net.Http;
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows;
 using Microsoft.Extensions.Logging;
@@ -87,7 +88,20 @@ public sealed class UpdateService : IUpdateService
 
     private async Task DownloadAndApplyAsync(ReleaseInfo release)
     {
-        var tempExe = Path.Combine(Path.GetTempPath(), $"StickyPad-update-{release.Tag}.exe");
+        // 방어: 태그·URL 검증. 태그(GitHub 값)를 파일 경로·스크립트에 그대로 넣지 않고,
+        // 다운로드 출처는 https + GitHub 호스트로 제한한다.
+        if (!IsSafeReleaseTag(release.Tag) || !IsTrustedDownloadUrl(release.DownloadUrl))
+        {
+            _logger.LogWarning("Refusing update: untrusted tag/url ({Tag}, {Url})", release.Tag, release.DownloadUrl);
+            Report(Strings.Update_ApplyFailed, MessageBoxImage.Warning);
+            return;
+        }
+
+        // 예측 불가한 전용 스테이징 폴더 — 같은 세션 프로세스의 바꿔치기(TOCTOU)를 어렵게 하고
+        // 파일명에 신뢰되지 않은 태그를 넣지 않는다.
+        var stageDir = Path.Combine(Path.GetTempPath(), "StickyPad-update-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(stageDir);
+        var tempExe = Path.Combine(stageDir, "StickyPad-update.exe");
         try
         {
             var bytes = await Http.GetByteArrayAsync(release.DownloadUrl!).ConfigureAwait(false);
@@ -109,7 +123,7 @@ public sealed class UpdateService : IUpdateService
 
         try
         {
-            LaunchReplacer(tempExe, target);
+            LaunchReplacer(stageDir, tempExe, target);
         }
         catch (Exception ex)
         {
@@ -122,10 +136,10 @@ public sealed class UpdateService : IUpdateService
         Application.Current.Dispatcher.Invoke(() => Application.Current.Shutdown());
     }
 
-    private static void LaunchReplacer(string newExe, string targetExe)
+    private static void LaunchReplacer(string stageDir, string newExe, string targetExe)
     {
         var pid = Environment.ProcessId;
-        var batPath = Path.Combine(Path.GetTempPath(), $"stickypad-update-{pid}.cmd");
+        var batPath = Path.Combine(stageDir, "apply-update.cmd");
         // Wait for this process to exit (release the lock), swap the exe, relaunch, then self-delete.
         var script =
             "@echo off\r\n" +
@@ -190,6 +204,17 @@ public sealed class UpdateService : IUpdateService
         var t = tag.TrimStart('v', 'V').Trim();
         return Version.TryParse(t, out var v) ? v : null;
     }
+
+    /// GitHub 태그가 예상 버전 형식(v1.2.3 등)인지. 파일 경로·스크립트에 넣기 전 검증.
+    internal static bool IsSafeReleaseTag(string? tag) =>
+        !string.IsNullOrEmpty(tag) && Regex.IsMatch(tag, @"^v?\d+(\.\d+){0,3}$");
+
+    /// 다운로드 URL 이 https 이고 GitHub 릴리즈 호스트인지. 임의 오리진 다운로드 차단.
+    internal static bool IsTrustedDownloadUrl(string? url) =>
+        Uri.TryCreate(url, UriKind.Absolute, out var u)
+        && u.Scheme == Uri.UriSchemeHttps
+        && (u.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase)
+            || u.Host.EndsWith(".githubusercontent.com", StringComparison.OrdinalIgnoreCase));
 
     private static void Report(string message, MessageBoxImage icon) =>
         Application.Current.Dispatcher.Invoke(() =>

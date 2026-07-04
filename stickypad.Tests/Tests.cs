@@ -11,6 +11,99 @@ using StickyPad.Utils;
 
 namespace StickyPad.Tests;
 
+public class SecurityHardeningTests
+{
+    [Fact]
+    public void Import_RichTextXaml_DowngradedToPlainText_KillsXamlSink()
+    {
+        var id = Guid.NewGuid();
+        var note = new Note
+        {
+            Id = id,
+            Format = NoteContentFormat.RichTextXaml,
+            Content = "<Section><ObjectDataProvider MethodName=\"Start\"/></Section>",
+            PlainText = "안녕",
+            LinkedFilePath = @"C:\Users\x\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\evil.cmd",
+        };
+
+        var r = BackupService.SanitizeImportedNote(note);
+
+        Assert.Equal(NoteContentFormat.PlainText, r.Format);   // XAML 로더에 도달 안 함
+        Assert.Equal("안녕", r.Content);                        // 원본 XAML 이 아님
+        Assert.DoesNotContain("ObjectDataProvider", r.Content);
+        Assert.Null(r.LinkedFilePath);                          // 임의 파일 쓰기 통로 제거
+        Assert.Equal(id, r.Id);                                 // Id 유지(정상 복원 위해)
+    }
+
+    [Fact]
+    public void Import_NonXaml_KeepsContent_StripsLinkedPath()
+    {
+        var r = BackupService.SanitizeImportedNote(new Note
+        {
+            Format = NoteContentFormat.Markdown,
+            Content = "# hi",
+            LinkedFilePath = @"C:\x\a.md",
+        });
+        Assert.Equal(NoteContentFormat.Markdown, r.Format);
+        Assert.Equal("# hi", r.Content);
+        Assert.Null(r.LinkedFilePath);
+    }
+
+    [Fact]
+    public void ExportDocument_Csp_BlocksRemoteResources()
+    {
+        var note = new Note { Title = "t", Format = NoteContentFormat.PlainText, PlainText = "x", Content = "x" };
+        var html = HtmlRenderer.RenderDocument(new[] { note }, "doc");
+        Assert.Contains("default-src 'none'; img-src data:; media-src data:; ", html);
+        Assert.DoesNotContain("img-src data: https", html);   // 원격 이미지 허용 안 함
+    }
+
+    [Theory]
+    [InlineData("v1.6.1", true)]
+    [InlineData("1.6.1", true)]
+    [InlineData("v1.6.1.0", true)]
+    [InlineData("v2", true)]
+    [InlineData("x\" & calc & \"", false)]   // cmd 인젝션 시도
+    [InlineData("1.6.0; whoami", false)]
+    [InlineData("", false)]
+    public void Update_TagValidation(string tag, bool expected) =>
+        Assert.Equal(expected, UpdateService.IsSafeReleaseTag(tag));
+
+    [Fact]
+    public void DangerousXaml_GadgetDetected_AndKeptFromParser()
+    {
+        var payload =
+            "<Section xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" " +
+            "xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\" " +
+            "xmlns:d=\"clr-namespace:System.Diagnostics;assembly=System.Diagnostics.Process\">" +
+            "<Section.Resources><ObjectDataProvider x:Key=\"p\" ObjectType=\"{x:Type d:Process}\" MethodName=\"Start\"/></Section.Resources></Section>";
+
+        Assert.True(TextExtraction.ContainsDangerousXaml(payload));
+        // 가드가 파서 앞에서 막으므로 실행되지 않고 태그 제거 텍스트만 반환.
+        var text = TextExtraction.ToPlainText(payload, NoteContentFormat.RichTextXaml);
+        Assert.DoesNotContain("<ObjectDataProvider", text);
+    }
+
+    [Fact]
+    public void LegitFlowXaml_NotFlagged()
+    {
+        var legit =
+            "<Section xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\">" +
+            "<Paragraph><Run>hello</Run> <Bold>world</Bold></Paragraph></Section>";
+        Assert.False(TextExtraction.ContainsDangerousXaml(legit));   // 오탐 없음
+    }
+
+    [Theory]
+    [InlineData("https://github.com/BaeTab/stickypad_windows/releases/download/v1.6.1/StickyPad.exe", true)]
+    [InlineData("https://objects.githubusercontent.com/abc", true)]
+    [InlineData("http://github.com/x", false)]              // 평문
+    [InlineData("https://evil.example/StickyPad.exe", false)]
+    [InlineData("file:///C:/evil.exe", false)]
+    [InlineData(null, false)]
+    public void Update_UrlValidation(string? url, bool expected) =>
+        Assert.Equal(expected, UpdateService.IsTrustedDownloadUrl(url));
+}
+
 public class LocalizationTests
 {
     [Fact]

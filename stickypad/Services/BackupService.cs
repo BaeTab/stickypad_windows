@@ -437,10 +437,27 @@ public sealed class BackupService : IBackupService
 
         foreach (var note in payload.Notes)
         {
-            await _repository.UpsertAsync(note).ConfigureAwait(true);
+            await _repository.UpsertAsync(SanitizeImportedNote(note)).ConfigureAwait(true);
         }
         await _windowManager.ReloadAsync().ConfigureAwait(true);
         _logger.LogInformation("Imported {Count} notes from {Path}", payload.Notes.Count, dlg.FileName);
+    }
+
+    /// 신뢰할 수 없는 백업 파일에서 온 노트의 위험 필드를 무해화한다(보안).
+    /// - RichTextXaml 은 창이 열릴 때 비제한 XAML 파서(TextRange.Load)로 ObjectDataProvider 같은
+    ///   가젯이 실행돼 임의 코드 실행이 가능하므로 순수 텍스트로 강등한다.
+    /// - LinkedFilePath 는 편집 시 그 경로에 노트 내용을 조용히 써서 임의 파일을 덮어쓰는 통로가
+    ///   되므로 제거한다(가져온 노트는 일반 노트가 된다 — 필요하면 파일을 다시 열어 연동).
+    internal static Note SanitizeImportedNote(Note note)
+    {
+        note.LinkedFilePath = null;
+        note.LinkedFileSyncedUtc = null;
+        if (note.Format == NoteContentFormat.RichTextXaml)
+        {
+            note.Content = note.PlainText ?? string.Empty;
+            note.Format = NoteContentFormat.PlainText;
+        }
+        return note;
     }
 
     private sealed record BackupPayload(int Version, DateTime ExportedAt, System.Collections.Generic.IReadOnlyList<Note> Notes);

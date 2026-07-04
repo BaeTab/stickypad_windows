@@ -195,7 +195,10 @@ public partial class NoteWindow : Window
                 return;
             }
 
-            if (_viewModel.Format == NoteContentFormat.RichTextXaml)
+            // 보안: TextRange.Load 는 비제한 XAML 파서라 가젯이 코드 실행을 일으킬 수 있다.
+            // 정상 노트엔 없는 위험 마커가 보이면 XAML 로 로드하지 않고 순수 텍스트로 처리.
+            if (_viewModel.Format == NoteContentFormat.RichTextXaml
+                && !TextExtraction.ContainsDangerousXaml(_viewModel.Content))
             {
                 try
                 {
@@ -497,7 +500,13 @@ public partial class NoteWindow : Window
         core.NewWindowRequested += (_, e) =>
         {
             e.Handled = true;
-            OpenExternal(e.Uri);
+            // 스킴을 http/https 로 제한 — 노트 마크업이 file:/UNC/프로토콜 핸들러로 로컬 실행을
+            // 유도하는 것을 막는다(NavigationStarting 과 동일 정책).
+            if (e.Uri.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+                || e.Uri.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            {
+                OpenExternal(e.Uri);
+            }
         };
         _webViewReady = true;
     }

@@ -5,6 +5,17 @@ All notable changes to StickyPad are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This file starts from the point it was introduced — earlier history lives in the git log.
 
+## [1.6.1] - 2026-07-04
+
+### Security
+- **백업 가져오기 XAML RCE 하드닝.** 가져온 노트의 `RichTextXaml` 콘텐츠를 `PlainText` 로 강등(`SanitizeImportedNote`)해, 신뢰할 수 없는 XAML이 WPF의 비제한 파서(`TextRange.Load`)에 도달하지 못하게 했다. `NoteWindow.LoadEditorContent` / `TextExtraction.ToPlainText` 두 XAML 싱크에도 위험 마커 가드(`ContainsDangerousXaml`)를 추가해 심층 방어했다.
+- **가져온 노트의 `LinkedFilePath` 제거.** 편집 시 임의 경로에 노트 내용을 조용히 써버리는(임의 파일 덮어쓰기) 경로를 차단했다.
+- **WebView2 `NewWindowRequested` 스킴을 http/https 로 제한.** 노트 마크업의 `file:`/UNC/프로토콜 링크로 로컬 실행을 유도하는 것을 막았다.
+- **내보내기 문서 CSP 에서 원격 리소스 차단.** HTML/PDF/인쇄 문서는 `data:` 이미지·미디어·폰트만 허용해 추적/SSRF 위험을 완화했다.
+- **명명 파이프(`StickyPad.OpenFile.v1`) 입력 검증.** 커맨드라인과 동일하게 파일 존재·지원 형식 검사 + 최대 20개 제한을 적용했다.
+- **자동 업데이트 태그·URL 검증 및 스테이징 강화.** GitHub 릴리즈 태그 형식 검증, 다운로드 URL을 https + GitHub 호스트로 제한, 예측 불가능한 GUID 스테이징 폴더 사용.
+- 보안 회귀 테스트를 추가했다. 자세한 내용은 [`docs/SECURITY-REVIEW.md`](docs/SECURITY-REVIEW.md) 참고.
+
 ## [1.6.0] - 2026-07-04
 
 ### Added

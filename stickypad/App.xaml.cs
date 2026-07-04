@@ -130,8 +130,14 @@ public partial class App : Application
             _host.Services.GetRequiredService<ITrayService>().Initialize();
 
             // 실행 중 다른 프로세스가 넘겨주는 파일 경로를 받아 여는 named-pipe 서버 시작.
+            // 파이프 입력은 같은 세션의 어떤 프로세스든 보낼 수 있으므로, 커맨드라인과 동일하게
+            // 존재·지원 형식·개수 제한을 거쳐(임의 파일 열기·창 폭탄 방지) 연다.
             _instanceChannel = new InstanceChannel();
-            _instanceChannel.StartServer(paths => Dispatcher.InvokeAsync(() => OpenFiles(manager, paths)));
+            _instanceChannel.StartServer(paths =>
+            {
+                var safe = ExtractFilePaths(paths);
+                if (safe.Length > 0) Dispatcher.InvokeAsync(() => OpenFiles(manager, safe));
+            });
 
             // 이 실행이 파일 인자와 함께 시작됐다면(더블클릭 등) 지금 연다.
             if (startupFiles.Length > 0) OpenFiles(manager, startupFiles);
@@ -158,6 +164,8 @@ public partial class App : Application
         }
     }
 
+    private const int MaxFilesToOpen = 20;
+
     private static string[] ExtractFilePaths(string[] args)
     {
         if (args is null || args.Length == 0) return Array.Empty<string>();
@@ -168,7 +176,8 @@ public partial class App : Application
             var full = LinkedFile.Normalize(arg);
             if (File.Exists(full) && LinkedFile.IsSupported(full)) paths.Add(full);
         }
-        return paths.Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        // 한 번에 여는 파일 수 제한 — 파이프로 수천 경로를 보내 창 폭탄(DoS)을 막는다.
+        return paths.Distinct(StringComparer.OrdinalIgnoreCase).Take(MaxFilesToOpen).ToArray();
     }
 
     private static async void OpenFiles(IWindowManager manager, string[] paths)
