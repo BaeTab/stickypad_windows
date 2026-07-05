@@ -9,9 +9,9 @@
         <LangVersion>latest</LangVersion>
         <RootNamespace>StickyPad</RootNamespace>
         <AssemblyName>StickyPad</AssemblyName>
-        <Version>2.1.0</Version>
-        <AssemblyVersion>2.1.0.0</AssemblyVersion>
-        <FileVersion>2.1.0.0</FileVersion>
+        <Version>2.1.1</Version>
+        <AssemblyVersion>2.1.1.0</AssemblyVersion>
+        <FileVersion>2.1.1.0</FileVersion>
         <ApplicationManifest>app.manifest</ApplicationManifest>
         <ApplicationIcon>app.ico</ApplicationIcon>
     </PropertyGroup>
@@ -20,11 +20,13 @@
         <InternalsVisibleTo Include="stickypad.Tests" />
     </ItemGroup>
 
-    <!-- WYSIWYG 마크다운 에디터(오프라인 CodeMirror 6 번들) 자산을 출력 폴더로 복사 -->
+    <!-- WYSIWYG 마크다운 에디터(오프라인 CodeMirror 6) 자산을 어셈블리에 임베드 —
+         단일 파일(self-contained) 배포에서도 exe 안에 포함되도록. 런타임에 실제 폴더로 추출해 쓴다. -->
     <ItemGroup>
-        <Content Include="Assets\mdeditor\**\*">
-            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
+        <None Remove="Assets\mdeditor\editor.html" />
+        <None Remove="Assets\mdeditor\mdeditor.bundle.js" />
+        <EmbeddedResource Include="Assets\mdeditor\editor.html" />
+        <EmbeddedResource Include="Assets\mdeditor\mdeditor.bundle.js" />
     </ItemGroup>
 
     <ItemGroup>

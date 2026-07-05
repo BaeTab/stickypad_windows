@@ -5,6 +5,11 @@ All notable changes to StickyPad are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This file starts from the point it was introduced — earlier history lives in the git log.
 
+## [2.1.1] - 2026-07-05
+
+### Fixed
+- 설치본(단일 파일 배포)에서 위지윅(WYSIWYG) 편집이 "지정된 경로를 찾을 수 없습니다"로 시작하지 못하던 문제 — 에디터 자산(CodeMirror 번들·호스트 HTML)을 어셈블리에 임베드하고 런타임에 로컬 폴더로 추출하도록 변경해 단일 exe에서도 동작하도록 수정.
+
 ## [2.1.0] - 2026-07-05
 
 ### Added

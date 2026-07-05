@@ -534,6 +534,26 @@ public class VaultBootstrapTests
     }
 }
 
+public class EmbeddedAssetTests
+{
+    // WYSIWYG 에디터 자산이 어셈블리에 실제로 임베드돼 있어야 한다(단일 파일 배포에서
+    // exe 옆 폴더가 없어 "경로를 찾을 수 없음"으로 실패하던 회귀 방지).
+    [Theory]
+    [InlineData(".editor.html")]
+    [InlineData(".mdeditor.bundle.js")]
+    public void MdEditorAsset_IsEmbeddedAndNonEmpty(string suffix)
+    {
+        var asm = typeof(StickyPad.Utils.MarkdownWysiwyg).Assembly;
+        var name = asm.GetManifestResourceNames()
+            .FirstOrDefault(n => n.EndsWith(suffix, StringComparison.OrdinalIgnoreCase));
+        Assert.NotNull(name);
+
+        using var s = asm.GetManifestResourceStream(name!);
+        Assert.NotNull(s);
+        Assert.True(s!.Length > 0);
+    }
+}
+
 public class LocalizationTests
 {
     [Fact]

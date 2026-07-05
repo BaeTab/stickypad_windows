@@ -1,5 +1,7 @@
 using System;
 using System.IO;
+using System.Linq;
+using System.Reflection;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.Web.WebView2.Core;
@@ -50,8 +52,9 @@ public sealed class MarkdownWysiwyg
         s.IsGeneralAutofillEnabled = false;
         s.IsPasswordAutosaveEnabled = false;
 
-        // 앱 자산 폴더를 가상 호스트로 매핑 — 로컬 자산만 로드, 교차 출처 차단.
-        var assets = Path.Combine(AppContext.BaseDirectory, "Assets", "mdeditor");
+        // 임베드된 에디터 자산을 실제 폴더로 추출한 뒤 가상 호스트로 매핑 —
+        // 로컬 자산만 로드, 교차 출처 차단. 단일 파일 배포에서도 동작한다.
+        var assets = EnsureAssetsExtracted();
         core.SetVirtualHostNameToFolderMapping(
             VirtualHost, assets, CoreWebView2HostResourceAccessKind.DenyCors);
 
@@ -95,6 +98,43 @@ public sealed class MarkdownWysiwyg
 
     public void Focus() =>
         _ = _web.CoreWebView2?.ExecuteScriptAsync("window.SPEditor && window.SPEditor.focus()");
+
+    private static readonly object ExtractLock = new();
+    private static string? _assetsDir;
+
+    /// 어셈블리에 임베드된 에디터 자산을 로컬 폴더로 추출하고 그 경로를 돌려준다.
+    /// 프로세스당 한 번만 추출한다(동시 창 생성 시 경합 방지).
+    private static string EnsureAssetsExtracted()
+    {
+        lock (ExtractLock)
+        {
+            if (_assetsDir is not null) return _assetsDir;
+
+            var dir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "StickyPad", "mdeditor");
+            Directory.CreateDirectory(dir);
+
+            var asm = typeof(MarkdownWysiwyg).Assembly;
+            ExtractResource(asm, "editor.html", Path.Combine(dir, "editor.html"));
+            ExtractResource(asm, "mdeditor.bundle.js", Path.Combine(dir, "mdeditor.bundle.js"));
+
+            _assetsDir = dir;
+            return dir;
+        }
+    }
+
+    private static void ExtractResource(Assembly asm, string endsWith, string destPath)
+    {
+        var name = asm.GetManifestResourceNames()
+            .FirstOrDefault(n => n.EndsWith("." + endsWith, StringComparison.OrdinalIgnoreCase));
+        if (name is null)
+            throw new FileNotFoundException($"Embedded editor asset not found: {endsWith}");
+        using var src = asm.GetManifestResourceStream(name)
+            ?? throw new FileNotFoundException($"Cannot open embedded asset: {name}");
+        using var fs = File.Create(destPath);
+        src.CopyTo(fs);
+    }
 
     private void OnWebMessage(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
     {
