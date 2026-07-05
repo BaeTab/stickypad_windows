@@ -59,11 +59,17 @@ Switch a note between **Text / Markdown / HTML** and it renders on the spot:
 
 > Screenshots live in [`docs/images/`](docs/images). Replace the placeholders with your own captures anytime.
 
+### WYSIWYG Markdown editing
+Toggle **✎** on a Markdown note for live‑preview editing — headings, **bold**, *italic*, `code`, quotes and lists render inline as you type, and the markdown markers hide on lines you're not editing (Obsidian‑style). Your note is still saved as plain Markdown source, so it round‑trips cleanly with Vault `.md` files. Turn ✎ off anytime for raw source editing.
+
+![WYSIWYG Markdown editing](docs/images/wysiwyg.png)
+
 ## Features
 
 ### Notes & editing
 - Rich‑text editor (WPF `RichTextBox`) with a toolbar that appears on hover/focus and hides in preview mode.
 - **Text / Markdown / HTML modes** — pick a mode per note from the header (T / M / &lt;/&gt;). Markdown (rendered with [Markdig](https://github.com/xoofx/markdig)) and raw HTML render in a themed **WebView2** preview; `Ctrl+E` toggles source ⇄ rendered, and links open in your browser.
+- **WYSIWYG Markdown editing** — live‑preview editing that hides markers as you type; saved as plain Markdown (offline).
 - **Formatting:** bold, italic, underline, strikethrough, bulleted & numbered lists, left/center/right alignment, inline code and code blocks, and a per‑selection font‑size picker.
 - **Task checkboxes** — insert inline `☐` items you can tick right inside the note.
 - **Preview / Edit toggle** (`Ctrl+E`) locks a note read‑only so you can't fumble the text while reading it.

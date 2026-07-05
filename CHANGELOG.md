@@ -5,6 +5,14 @@ All notable changes to StickyPad are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This file starts from the point it was introduced — earlier history lives in the git log.
 
+## [2.1.0] - 2026-07-05
+
+### Added
+- **위지윅(WYSIWYG) 마크다운 편집** — 마크다운 노트에서 ✎ 토글로 라이브 프리뷰 편집. 커서가 없는 줄은 마크다운 마커(`#`·`**`·`` ` ``·`>`)가 숨겨져 서식으로 보이고, 편집 중인 줄만 원본을 노출한다(Obsidian식). 오프라인 CodeMirror 6 기반이며, 저장은 순수 마크다운 소스라 볼트(`.md`)와 왕복 호환된다. 설정으로 기본값을 지정할 수 있고 원본 소스 편집으로 언제든 폴백된다.
+
+### Security
+- 위지윅 편집은 편집 전용 WebView2에만 스크립트/웹메시지를 허용하고(렌더 미리보기는 스크립트 OFF 유지), 네트워크를 전면 차단(CSP `default-src 'none'`, 가상 호스트 `DenyCors`, 페이지 밖 이동·새 창 차단)하며, 노트 내용은 문자열 데이터로만 주고받아 코드 실행 경로를 만들지 않는다.
+
 ## [2.0.1] - 2026-07-05
 
 ### Fixed
