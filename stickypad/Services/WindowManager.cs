@@ -76,6 +76,10 @@ public sealed class WindowManager : IWindowManager
 
     public NoteWindow CreateAndShowNew(NoteTemplate template)
     {
+        // 시작 시 자동 생성됐거나 아직 손대지 않은 빈 노트가 있으면 정리 — 템플릿 노트 옆에
+        // 빈 메모가 덩그러니 하나 더 남지 않도록.
+        DiscardEmptyPlaceholders();
+
         var content = template.Content.Replace("{{date}}", DateTime.Now.ToString("yyyy-MM-dd"));
         var plainText = TextExtraction.ToPlainText(content, template.Format);
         var note = new Note
@@ -208,6 +212,9 @@ public sealed class WindowManager : IWindowManager
         note.Tags = TextExtraction.ExtractTags(note.PlainText);
         await _repository.UpsertAsync(note).ConfigureAwait(true);
 
+        // 파일을 여는 순간, 곁에 있던 빈 자리표시 노트는 정리한다(빈 메모가 하나 더 남지 않도록).
+        DiscardEmptyPlaceholders();
+
         var window = BuildWindow(note);
         window.OpenInPreview = true;   // .md 를 열면 렌더링된 화면으로 먼저 보여준다.
         window.Show();
@@ -249,6 +256,18 @@ public sealed class WindowManager : IWindowManager
         window.Show();
         window.Activate();
         return true;
+    }
+
+    /// 내용 없는(비연동) 노트 창을 정리한다. 노트가 하나도 없을 때 시작하면 자동으로 뜨는
+    /// 빈 자리표시 노트가, 사용자가 템플릿·파일 열기로 실제 노트를 띄울 때 옆에 남지 않게 한다.
+    /// 닫으면 <see cref="OnWindowDismissed"/> 가 빈 노트를 purge·제거·dispose 한다.
+    private void DiscardEmptyPlaceholders()
+    {
+        foreach (var w in _windows.ToList())
+        {
+            if (w.ViewModel.IsLinkedFile || !w.ViewModel.IsEmpty) continue;
+            w.RequestClose();
+        }
     }
 
     private static void ShowAndActivate(NoteWindow window)

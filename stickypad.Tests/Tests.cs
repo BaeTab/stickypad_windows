@@ -503,6 +503,35 @@ public class VaultBootstrapTests
         }
         finally { try { Directory.Delete(root, true); } catch { } }
     }
+
+    [Fact]
+    public async Task EnsureSeeded_SkipsTrashedAndEmptyNotes()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "sp-boot-" + Guid.NewGuid().ToString("N"));
+        var dbPath = Path.Combine(root, "notes.db");
+        var vault = Path.Combine(root, "vault");
+        try
+        {
+            Directory.CreateDirectory(root);
+            using (var db = new NoteRepository(dbPath))
+            {
+                await db.UpsertAsync(new Note { Title = "Keep", Content = "real", PlainText = "real", Format = NoteContentFormat.Markdown });
+                // 빈(내용 없는) 자리표시 노트 — 목록엔 보여도 볼트로는 옮기지 않는다.
+                await db.UpsertAsync(new Note { Title = "Blank", Content = "", PlainText = "   ", Format = NoteContentFormat.Markdown });
+                // 휴지통 노트 — 활성 목록에 없으므로 볼트로 옮기지 않는다.
+                var trashed = new Note { Title = "Gone", Content = "was here", PlainText = "was here", Format = NoteContentFormat.Markdown };
+                await db.UpsertAsync(trashed);
+                await db.DeleteAsync(trashed.Id);
+            }
+
+            VaultBootstrap.EnsureSeeded(vault, dbPath);
+
+            var seeded = new VaultStore(vault).Load();
+            Assert.Single(seeded);                 // 활성·비어있지 않은 노트만 이관
+            Assert.Equal("Keep", seeded[0].Title);
+        }
+        finally { try { Directory.Delete(root, true); } catch { } }
+    }
 }
 
 public class LocalizationTests

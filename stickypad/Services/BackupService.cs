@@ -39,7 +39,7 @@ public sealed class BackupService : IBackupService
             FileName = $"stickypad-{DateTime.Now:yyyyMMdd-HHmmss}.json",
             Title = Strings.Backup_ExportDialogTitle,
         };
-        if (dlg.ShowDialog() != true) return;
+        if (DialogOwner.Show(dlg) != true) return;
 
         var notes = await _repository.GetAllAsync().ConfigureAwait(true);
         var payload = new BackupPayload(1, DateTime.UtcNow, notes);
@@ -56,7 +56,7 @@ public sealed class BackupService : IBackupService
             FileName = $"stickypad-notes-{DateTime.Now:yyyyMMdd-HHmmss}.md",
             Title = Strings.Backup_TextExportDialogTitle,
         };
-        if (dlg.ShowDialog() != true) return;
+        if (DialogOwner.Show(dlg) != true) return;
 
         var notes = await _repository.GetAllAsync().ConfigureAwait(true);
         var sb = new StringBuilder();
@@ -121,7 +121,7 @@ public sealed class BackupService : IBackupService
     private async Task ExportAsMarkdownFilesAsync(IReadOnlyList<Note> notes)
     {
         var dlg = new OpenFolderDialog { Title = Strings.Backup_ChooseExportFolderTitle };
-        if (dlg.ShowDialog() != true) return;
+        if (DialogOwner.Show(dlg) != true) return;
         var folder = dlg.FolderName;
 
         // 폴더에 이미 있는 파일명을 미리 예약해 둔다 — 같은 이름의 기존 파일을 덮어쓰지 않도록.
@@ -180,7 +180,7 @@ public sealed class BackupService : IBackupService
             FileName = $"stickypad-notes-{DateTime.Now:yyyyMMdd-HHmmss}.html",
             Title = Strings.Export_HtmlDialogTitle,
         };
-        if (dlg.ShowDialog() != true) return;
+        if (DialogOwner.Show(dlg) != true) return;
 
         var html = HtmlRenderer.RenderDocument(notes, Strings.Export_DocumentTitle);
         try
@@ -206,7 +206,7 @@ public sealed class BackupService : IBackupService
             FileName = $"stickypad-notes-{DateTime.Now:yyyyMMdd-HHmmss}.pdf",
             Title = Strings.Export_PdfDialogTitle,
         };
-        if (dlg.ShowDialog() != true) return;
+        if (DialogOwner.Show(dlg) != true) return;
 
         var html = HtmlRenderer.RenderDocument(notes, Strings.Export_DocumentTitle);
         try
@@ -240,7 +240,7 @@ public sealed class BackupService : IBackupService
                     FileName = safe + ".html",
                     Title = Strings.Export_HtmlDialogTitle,
                 };
-                if (dlg.ShowDialog() != true) return;
+                if (DialogOwner.Show(dlg) != true) return;
 
                 try
                 {
@@ -266,7 +266,7 @@ public sealed class BackupService : IBackupService
                     FileName = safe + ".pdf",
                     Title = Strings.Export_PdfDialogTitle,
                 };
-                if (dlg.ShowDialog() != true) return;
+                if (DialogOwner.Show(dlg) != true) return;
 
                 try
                 {
@@ -293,7 +293,7 @@ public sealed class BackupService : IBackupService
                     FileName = safe + ".md",
                     Title = Strings.Export_MarkdownDialogTitle,
                 };
-                if (dlg.ShowDialog() != true) return;
+                if (DialogOwner.Show(dlg) != true) return;
 
                 try
                 {
@@ -405,7 +405,7 @@ public sealed class BackupService : IBackupService
             Filter = Strings.Backup_JsonImportFilter,
             Title = Strings.Backup_ImportDialogTitle,
         };
-        if (dlg.ShowDialog() != true) return;
+        if (DialogOwner.Show(dlg) != true) return;
 
         BackupPayload? payload;
         try
@@ -446,7 +446,7 @@ public sealed class BackupService : IBackupService
     public async Task ExportVaultAsync()
     {
         var dlg = new OpenFolderDialog { Title = Strings.Vault_ChooseExportFolder };
-        if (dlg.ShowDialog() != true) return;
+        if (DialogOwner.Show(dlg) != true) return;
         var folder = dlg.FolderName;
 
         var notes = await _repository.GetAllAsync().ConfigureAwait(true);
@@ -503,7 +503,7 @@ public sealed class BackupService : IBackupService
     public async Task ImportVaultAsync()
     {
         var dlg = new OpenFolderDialog { Title = Strings.Vault_ChooseImportFolder };
-        if (dlg.ShowDialog() != true) return;
+        if (DialogOwner.Show(dlg) != true) return;
         var folder = dlg.FolderName;
 
         List<string> files;

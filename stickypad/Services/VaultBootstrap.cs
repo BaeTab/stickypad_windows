@@ -22,13 +22,17 @@ public static class VaultBootstrap
             if (!File.Exists(dbPath)) return;
 
             using var db = new NoteRepository(dbPath);
-            var all = db.GetAllAsync().GetAwaiter().GetResult()
-                .Concat(db.GetTrashedAsync().GetAwaiter().GetResult())
+            // 볼트 폴더가 활성 목록과 일치하도록 — 목록에 보이는 노트만 옮긴다.
+            // 휴지통 노트와 내용 없는 빈 자리표시 노트는 제외(볼트 폴더에 목록에 없는
+            // .md 가 잔뜩 생기던 문제 방지). 원본 notes.db 는 그대로 보존되므로
+            // 휴지통은 LiteDB 모드로 되돌리면 다시 볼 수 있다.
+            var toSeed = db.GetAllAsync().GetAwaiter().GetResult()
+                .Where(n => !string.IsNullOrWhiteSpace(n.PlainText))
                 .ToList();
-            if (all.Count == 0) return;
+            if (toSeed.Count == 0) return;
 
-            new VaultStore(vaultFolder).Save(all);
-            Log.Information("Seeded vault {Folder} from {Count} LiteDB notes", vaultFolder, all.Count);
+            new VaultStore(vaultFolder).Save(toSeed);
+            Log.Information("Seeded vault {Folder} from {Count} active notes", vaultFolder, toSeed.Count);
         }
         catch (Exception ex)
         {

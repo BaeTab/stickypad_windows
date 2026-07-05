@@ -130,7 +130,7 @@ public sealed class TrayService : ITrayService
             Filter = Utils.LinkedFile.OpenDialogFilter,
             Title = Strings.Tray_OpenMarkdownDialogTitle,
         };
-        if (dlg.ShowDialog() != true) return;
+        if (DialogOwner.Show(dlg) != true) return;
         try { await _windowManager.OpenFileAsync(dlg.FileName); }
         catch (Exception ex) { _logger.LogError(ex, "Open markdown file failed"); }
     }
