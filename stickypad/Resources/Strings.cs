@@ -85,6 +85,8 @@ public static class Strings
     public static string Note_ModeMarkdown => Get(nameof(Note_ModeMarkdown));
     public static string Note_ModeHtml => Get(nameof(Note_ModeHtml));
     public static string Note_PreviewToggle => Get(nameof(Note_PreviewToggle));
+    public static string Note_WysiwygToggle => Get(nameof(Note_WysiwygToggle));
+    public static string Note_WysiwygUnavailable => Get(nameof(Note_WysiwygUnavailable));
     public static string Note_AlwaysOnTop => Get(nameof(Note_AlwaysOnTop));
     public static string Note_OpenFile => Get(nameof(Note_OpenFile));
     public static string Note_NewNote => Get(nameof(Note_NewNote));

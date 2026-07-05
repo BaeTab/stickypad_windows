@@ -20,6 +20,13 @@
         <InternalsVisibleTo Include="stickypad.Tests" />
     </ItemGroup>
 
+    <!-- WYSIWYG 마크다운 에디터(오프라인 CodeMirror 6 번들) 자산을 출력 폴더로 복사 -->
+    <ItemGroup>
+        <Content Include="Assets\mdeditor\**\*">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Content>
+    </ItemGroup>
+
     <ItemGroup>
         <PackageReference Include="Markdig" Version="1.3.2" />
         <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4022.49" />

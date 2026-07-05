@@ -17,4 +17,7 @@ public sealed class AppSettings
 
     /// 볼트 모드일 때 노트가 저장되는 폴더의 절대 경로.
     public string? VaultPath { get; set; }
+
+    /// 마크다운 노트를 열 때 WYSIWYG(오프라인 CodeMirror) 편집을 기본으로 켤지 여부.
+    public bool PreferWysiwygMarkdown { get; set; }
 }

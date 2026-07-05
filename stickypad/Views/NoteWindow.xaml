@@ -240,6 +240,13 @@
                             Content="&lt;/&gt;" />
                         <Border Style="{StaticResource VerticalSeparator}" />
                         <ToggleButton
+                            x:Name="WysiwygToggle"
+                            Click="WysiwygToggle_OnClick"
+                            Cursor="Hand"
+                            Style="{StaticResource FormatToggle}"
+                            ToolTip="{x:Static res:Strings.Note_WysiwygToggle}"
+                            Content="✎" />
+                        <ToggleButton
                             Cursor="Hand"
                             IsChecked="{Binding IsPreviewMode}"
                             Style="{StaticResource FormatToggle}"
@@ -484,6 +491,15 @@
             <wv2:WebView2
                 x:Name="Preview"
                 Grid.Row="2"
+                Margin="8,4,8,10"
+                DefaultBackgroundColor="Transparent"
+                Visibility="Collapsed" />
+
+            <!-- WYSIWYG 마크다운 에디터(오프라인 CodeMirror 6). 켜지면 소스 에디터·미리보기를 덮는다. -->
+            <wv2:WebView2
+                x:Name="WysiwygEditor"
+                Grid.Row="0"
+                Grid.RowSpan="3"
                 Margin="8,4,8,10"
                 DefaultBackgroundColor="Transparent"
                 Visibility="Collapsed" />

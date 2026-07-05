@@ -1,0 +1,21 @@
+{
+  "name": "stickypad-mdeditor",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "StickyPad WYSIWYG markdown editor bundle (CodeMirror 6, offline)",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "dependencies": {
+    "@codemirror/commands": "^6.6.0",
+    "@codemirror/lang-markdown": "^6.3.0",
+    "@codemirror/language": "^6.10.0",
+    "@codemirror/state": "^6.4.0",
+    "@codemirror/view": "^6.34.0",
+    "@lezer/highlight": "^1.2.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.0"
+  }
+}

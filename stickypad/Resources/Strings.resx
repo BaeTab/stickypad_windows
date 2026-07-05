@@ -333,6 +333,12 @@
   <data name="Note_PreviewToggle" xml:space="preserve">
     <value>Preview / Edit (Ctrl+E)</value>
   </data>
+  <data name="Note_WysiwygToggle" xml:space="preserve">
+    <value>WYSIWYG editing (Markdown)</value>
+  </data>
+  <data name="Note_WysiwygUnavailable" xml:space="preserve">
+    <value>Could not start the WYSIWYG editor; using source editing. ({0})</value>
+  </data>
   <data name="Note_AlwaysOnTop" xml:space="preserve">
     <value>Always on top</value>
   </data>

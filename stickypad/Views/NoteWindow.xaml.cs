@@ -50,6 +50,10 @@ public partial class NoteWindow : Window
     private readonly DispatcherTimer _fileReloadTimer;
     private bool _reloadPromptOpen;
 
+    // WYSIWYG(오프라인 CodeMirror 6) 편집 — 마크다운 노트에서 토글로 켠다.
+    private MarkdownWysiwyg? _wysiwyg;
+    private bool _wysiwygOn;
+
     public NoteViewModel ViewModel => _viewModel;
     public IReadOnlyList<double> FontSizeChoices => NoteViewModel.FontSizeCatalog;
 
@@ -100,6 +104,7 @@ public partial class NoteWindow : Window
         {
             if (args.PropertyName == nameof(NoteViewModel.IsPreviewMode))
             {
+                if (_wysiwygOn) return;   // WYSIWYG 편집 중엔 미리보기 토글이 레이아웃을 건드리지 않게
                 UpdateToolbarVisibility();
                 UpdateContentView();
             }
@@ -182,6 +187,14 @@ public partial class NoteWindow : Window
         // 파일이 다르면 조용히 파일 내용으로 맞춘다 — 파일이 원본).
         if (_viewModel.IsLinkedFile) _ = ReloadLinkedFileAsync();
         if (!_viewModel.IsPreviewMode) Editor.Focus();
+
+        // 마크다운 노트라면 저장된 선호에 따라 WYSIWYG 편집을 자동으로 켠다(연동/미리보기 열기 제외).
+        if (_viewModel.Format == NoteContentFormat.Markdown && !OpenInPreview
+            && !_viewModel.IsLinkedFile && PrefersWysiwyg())
+        {
+            WysiwygToggle.IsChecked = true;
+            _ = EnterWysiwygAsync();
+        }
     }
 
     private void LoadEditorContent()
@@ -342,7 +355,7 @@ public partial class NoteWindow : Window
     private string GetEditorPlainText() =>
         new TextRange(Editor.Document.ContentStart, Editor.Document.ContentEnd).Text.TrimEnd('\r', '\n');
 
-    private void ModeToggle_OnClick(object sender, RoutedEventArgs e)
+    private async void ModeToggle_OnClick(object sender, RoutedEventArgs e)
     {
         if (sender is not System.Windows.Controls.Primitives.ToggleButton { Tag: string tag }) return;
         var target = tag switch
@@ -351,7 +364,101 @@ public partial class NoteWindow : Window
             "Html" => NoteContentFormat.Html,
             _ => NoteContentFormat.RichTextXaml,
         };
+        // 마크다운이 아닌 모드로 바꾸면 WYSIWYG 편집을 먼저 정리(내용 보존).
+        if (_wysiwygOn && target != NoteContentFormat.Markdown)
+        {
+            WysiwygToggle.IsChecked = false;
+            await ExitWysiwygAsync(save: true);
+            SetWysiwygPreference(false);
+        }
         SetMode(target);
+    }
+
+    // ── WYSIWYG(오프라인 CodeMirror 6) 마크다운 편집 ──────────────────────────
+    private async void WysiwygToggle_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (WysiwygToggle.IsChecked == true) await EnterWysiwygAsync();
+        else await ExitWysiwygAsync(save: true);
+        SetWysiwygPreference(WysiwygToggle.IsChecked == true);
+    }
+
+    private async Task EnterWysiwygAsync()
+    {
+        if (_viewModel.Format != NoteContentFormat.Markdown) { WysiwygToggle.IsChecked = false; return; }
+        try
+        {
+            _wysiwyg ??= new MarkdownWysiwyg(WysiwygEditor);
+            _wysiwyg.Changed -= OnWysiwygChanged;
+            _wysiwyg.Changed += OnWysiwygChanged;
+
+            await _wysiwyg.LoadAsync(GetEditorPlainText());   // 현재 소스 내용을 넘김
+            _wysiwygOn = true;
+
+            Editor.Visibility = Visibility.Collapsed;
+            PreviewSplitter.Visibility = Visibility.Collapsed;
+            Preview.Visibility = Visibility.Collapsed;
+            WysiwygEditor.Visibility = Visibility.Visible;
+            _viewModel.IsPreviewMode = false;
+            _wysiwyg.Focus();
+        }
+        catch (Exception ex)
+        {
+            _wysiwygOn = false;
+            WysiwygToggle.IsChecked = false;
+            WysiwygEditor.Visibility = Visibility.Collapsed;
+            UpdateContentView();
+            MessageBox.Show(this, string.Format(Strings.Note_WysiwygUnavailable, ex.Message), "StickyPad",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private async Task ExitWysiwygAsync(bool save)
+    {
+        if (!_wysiwygOn) return;
+        try
+        {
+            if (save && _wysiwyg is not null)
+            {
+                var md = await _wysiwyg.GetMarkdownAsync();
+                _suppressEditorSync = true;
+                try { _viewModel.UpdateContent(md, NoteContentFormat.Markdown); LoadEditorContent(); }
+                finally { _suppressEditorSync = false; }
+            }
+        }
+        catch { /* 저장 실패해도 UI 는 복귀 */ }
+        finally
+        {
+            _wysiwygOn = false;
+            WysiwygEditor.Visibility = Visibility.Collapsed;
+            UpdateContentView();
+            if (!_viewModel.IsPreviewMode) Editor.Focus();
+        }
+    }
+
+    private void OnWysiwygChanged(string md)
+    {
+        if (!_wysiwygOn) return;
+        _viewModel.UpdateContent(md, NoteContentFormat.Markdown);   // 마크다운 소스로 저장
+    }
+
+    private static bool PrefersWysiwyg()
+    {
+        try { return App.Services.GetRequiredService<ISettingsService>().Current.PreferWysiwygMarkdown; }
+        catch { return false; }
+    }
+
+    private static void SetWysiwygPreference(bool value)
+    {
+        try
+        {
+            var settings = App.Services.GetRequiredService<ISettingsService>();
+            if (settings.Current.PreferWysiwygMarkdown != value)
+            {
+                settings.Current.PreferWysiwygMarkdown = value;
+                _ = settings.SaveAsync();
+            }
+        }
+        catch { /* 설정 저장 실패는 치명적이지 않음 */ }
     }
 
     private void SetMode(NoteContentFormat target)
@@ -407,6 +514,8 @@ public partial class NoteWindow : Window
         ModeTextToggle.IsChecked = !IsMarkup;
         ModeMarkdownToggle.IsChecked = _viewModel.Format == NoteContentFormat.Markdown;
         ModeHtmlToggle.IsChecked = _viewModel.Format == NoteContentFormat.Html;
+        // WYSIWYG 편집은 마크다운 노트에서만 의미가 있다.
+        WysiwygToggle.IsEnabled = _viewModel.Format == NoteContentFormat.Markdown;
     }
 
     private void UpdateContentView()

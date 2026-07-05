@@ -274,6 +274,12 @@
   <data name="Note_PreviewToggle" xml:space="preserve">
     <value>미리보기 / 편집 (Ctrl+E)</value>
   </data>
+  <data name="Note_WysiwygToggle" xml:space="preserve">
+    <value>위지윅 편집 (마크다운)</value>
+  </data>
+  <data name="Note_WysiwygUnavailable" xml:space="preserve">
+    <value>위지윅 에디터를 시작하지 못해 소스 편집으로 전환합니다. ({0})</value>
+  </data>
   <data name="Note_AlwaysOnTop" xml:space="preserve">
     <value>항상 위에 표시</value>
   </data>
