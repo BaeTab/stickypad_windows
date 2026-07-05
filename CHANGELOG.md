@@ -5,6 +5,13 @@ All notable changes to StickyPad are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This file starts from the point it was introduced — earlier history lives in the git log.
 
+## [2.0.1] - 2026-07-05
+
+### Fixed
+- 볼트로 이관할 때 휴지통·빈 노트까지 `.md`로 저장되던 문제 — 활성·비어있지 않은 노트만 이관하도록 수정(볼트 폴더가 노트 목록과 일치).
+- 템플릿에서 새 노트를 만들거나 파일을 열 때 빈 자리표시 노트가 하나 더 남던 문제 — 실제 노트를 띄울 때 빈 노트를 정리.
+- 트레이 메뉴의 폴더 선택 대화상자(볼트 가져오기·내보내기 등)가 소유자 창 없이 즉시 사라지던 문제 — 항상 유효한 소유자 창을 부여.
+
 ## [2.0.0] - 2026-07-05
 
 ### Added
