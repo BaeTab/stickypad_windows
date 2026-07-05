@@ -1,7 +1,7 @@
 // StickyPad WYSIWYG markdown editor — CodeMirror 6, fully offline.
 // Stores/returns plain Markdown source (round-trips cleanly with vault .md).
 import { EditorView, keymap, drawSelection, highlightActiveLine, placeholder } from "@codemirror/view";
-import { EditorState, Prec, RangeSetBuilder } from "@codemirror/state";
+import { EditorState, Prec, RangeSetBuilder, EditorSelection } from "@codemirror/state";
 import { history, defaultKeymap, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { syntaxTree, syntaxHighlighting, HighlightStyle } from "@codemirror/language";
@@ -52,7 +52,6 @@ function buildDecorations(view) {
         if (!isMark && !isLinkUrl) return;
         const line = view.state.doc.lineAt(node.from).number;
         if (act.has(line)) return;            // 편집 중인 줄은 원본 마커를 그대로 보여줌
-        // HeaderMark 뒤 공백까지 함께 숨겨 제목이 왼쪽에 붙게
         let end = node.to;
         if (node.name === "HeaderMark") {
           const ch = view.state.doc.sliceString(end, end + 1);
@@ -84,6 +83,112 @@ const theme = EditorView.theme({
   "&.cm-focused": { outline: "none" },
   ".cm-line": { padding: "0" },
 });
+
+// ── 서식 명령 (버튼·단축키가 마크다운 문법을 대신 넣어준다) ──────────────────
+function toggleInline(marker) {
+  return (view) => {
+    view.dispatch(view.state.changeByRange((range) => {
+      const { from, to } = range;
+      const before = view.state.sliceDoc(Math.max(0, from - marker.length), from);
+      const after = view.state.sliceDoc(to, Math.min(view.state.doc.length, to + marker.length));
+      if (before === marker && after === marker) {
+        // 이미 감싸져 있으면 벗기기
+        return {
+          changes: [{ from: from - marker.length, to: from }, { from: to, to: to + marker.length }],
+          range: EditorSelection.range(from - marker.length, to - marker.length),
+        };
+      }
+      return {
+        changes: [{ from, insert: marker }, { from: to, insert: marker }],
+        range: EditorSelection.range(from + marker.length, to + marker.length),
+      };
+    }));
+    view.focus();
+    return true;
+  };
+}
+
+function setHeading(level) {
+  return (view) => {
+    view.dispatch(view.state.changeByRange((range) => {
+      const line = view.state.doc.lineAt(range.head);
+      const m = line.text.match(/^(#{1,6}\s+)/);
+      const cur = m ? m[1] : "";
+      const curLevel = m ? m[1].trim().length : 0;
+      const want = curLevel === level ? "" : "#".repeat(level) + " ";  // 같은 레벨이면 해제
+      const shift = want.length - cur.length;
+      return {
+        changes: { from: line.from, to: line.from + cur.length, insert: want },
+        range: EditorSelection.range(range.anchor + shift, range.head + shift),
+      };
+    }));
+    view.focus();
+    return true;
+  };
+}
+
+const LINE_MARKERS = [/^>\s+/, /^[-*+]\s\[[ xX]\]\s+/, /^[-*+]\s+/, /^\d+\.\s+/];
+function setLinePrefix(prefix) {
+  return (view) => {
+    view.dispatch(view.state.changeByRange((range) => {
+      const line = view.state.doc.lineAt(range.head);
+      let cur = "";
+      for (const re of LINE_MARKERS) { const mm = line.text.match(re); if (mm) { cur = mm[0]; break; } }
+      const want = cur === prefix ? "" : prefix;   // 같은 마커면 해제, 아니면 교체
+      const shift = want.length - cur.length;
+      return {
+        changes: { from: line.from, to: line.from + cur.length, insert: want },
+        range: EditorSelection.range(range.anchor + shift, range.head + shift),
+      };
+    }));
+    view.focus();
+    return true;
+  };
+}
+
+function insertLink(view) {
+  view.dispatch(view.state.changeByRange((range) => {
+    const text = view.state.sliceDoc(range.from, range.to) || "링크";
+    const insert = `[${text}](url)`;
+    const urlStart = range.from + 1 + text.length + 2;   // "[" + text + "]("
+    return {
+      changes: { from: range.from, to: range.to, insert },
+      range: EditorSelection.range(urlStart, urlStart + 3),   // "url" 선택
+    };
+  }));
+  view.focus();
+  return true;
+}
+
+const COMMANDS = {
+  bold: toggleInline("**"),
+  italic: toggleInline("*"),
+  strike: toggleInline("~~"),
+  code: toggleInline("`"),
+  h1: setHeading(1),
+  h2: setHeading(2),
+  h3: setHeading(3),
+  bullet: setLinePrefix("- "),
+  numbered: setLinePrefix("1. "),
+  task: setLinePrefix("- [ ] "),
+  quote: setLinePrefix("> "),
+  link: insertLink,
+};
+
+const formatKeymap = keymap.of([
+  { key: "Mod-b", run: COMMANDS.bold, preventDefault: true },
+  { key: "Mod-i", run: COMMANDS.italic, preventDefault: true },
+  { key: "Mod-Shift-x", run: COMMANDS.strike, preventDefault: true },
+  { key: "Mod-`", run: COMMANDS.code, preventDefault: true },
+  { key: "Mod-k", run: COMMANDS.link, preventDefault: true },
+  { key: "Mod-Alt-1", run: COMMANDS.h1, preventDefault: true },
+  { key: "Mod-Alt-2", run: COMMANDS.h2, preventDefault: true },
+  { key: "Mod-Alt-3", run: COMMANDS.h3, preventDefault: true },
+  { key: "Mod-Shift-8", run: COMMANDS.bullet, preventDefault: true },
+  { key: "Mod-Shift-7", run: COMMANDS.numbered, preventDefault: true },
+  { key: "Mod-Shift-9", run: COMMANDS.task, preventDefault: true },
+  { key: "Mod-Shift-.", run: COMMANDS.quote, preventDefault: true },
+]);
 
 // ── 호스트(C#) 브리지 ────────────────────────────────────────────────────
 let view = null;
@@ -119,12 +224,24 @@ function createEditor(initial) {
         livePreview,
         theme,
         changeListener,
-        placeholder("여기에 마크다운을 입력하세요…"),
+        placeholder("여기에 입력하세요… (Ctrl+B 굵게, Ctrl+I 기울임)"),
+        Prec.high(formatKeymap),
         Prec.high(keymap.of([indentWithTab, ...defaultKeymap, ...historyKeymap])),
       ],
     }),
   });
   view.focus();
+}
+
+// 툴바 버튼 배선 — 클릭해도 에디터 선택이 유지되도록 mousedown 을 막는다.
+function wireToolbar() {
+  document.querySelectorAll("#toolbar [data-cmd]").forEach((btn) => {
+    btn.addEventListener("mousedown", (e) => e.preventDefault());
+    btn.addEventListener("click", () => {
+      const cmd = COMMANDS[btn.getAttribute("data-cmd")];
+      if (cmd) cmd(view);
+    });
+  });
 }
 
 // C# → JS : 노트 내용 주입(문자열 데이터로만, HTML 주입 아님)
@@ -135,6 +252,7 @@ window.SPEditor = {
     suppress = false;
   },
   getMarkdown() { return view.state.doc.toString(); },
+  exec(name) { const c = COMMANDS[name]; if (c) c(view); },
   focus() { view.focus(); },
 };
 
@@ -154,7 +272,17 @@ const demo = params.has("demo")
   ? "# StickyPad WYSIWYG\n\n**굵게**, *기울임*, ~~취소선~~, `인라인 코드`.\n\n## 할 일\n- [x] 배포 v2.0.1\n- [ ] 위키 정리\n- [ ] 스크린샷\n\n> 인용문도 이렇게.\n\n[링크](https://github.com/BaeTab/stickypad_windows) 와 #태그.\n"
   : "";
 createEditor(demo);
+wireToolbar();
 view.contentDOM.addEventListener("blur", () => { clearTimeout(debounce); postChange(); });
+
+// 셀프테스트(?selftest=1): 명령이 실제로 마크다운 문법을 넣는지 확인용.
+if (params.has("selftest")) {
+  window.SPEditor.setMarkdown("bold me");
+  view.dispatch({ selection: EditorSelection.single(0, view.state.doc.length) });
+  window.SPEditor.exec("bold");
+  const el = document.getElementById("selftest");
+  if (el) el.textContent = JSON.stringify(window.SPEditor.getMarkdown());
+}
 
 // 호스트에 준비 완료 통지
 if (window.chrome && window.chrome.webview) {

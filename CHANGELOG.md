@@ -5,6 +5,11 @@ All notable changes to StickyPad are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This file starts from the point it was introduced — earlier history lives in the git log.
 
+## [2.2.0] - 2026-07-05
+
+### Added
+- 위지윅 편집에 **서식 툴바와 단축키** 추가 — 마크다운 문법을 직접 입력하지 않고, 버튼(굵게·기울임·취소선·인라인 코드·제목·글머리표/번호/체크박스 목록·인용·링크)이나 단축키(`Ctrl+B`/`Ctrl+I`, `Ctrl+Shift+X`, `` Ctrl+` ``, `Ctrl+K`, `Ctrl+Alt+1~3` 등)로 서식을 적용한다. 워드프로세서처럼 편집하면서 저장은 여전히 순수 마크다운 소스라 볼트(`.md`)와 왕복 호환된다.
+
 ## [2.1.1] - 2026-07-05
 
 ### Fixed
