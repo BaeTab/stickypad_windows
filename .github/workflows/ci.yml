@@ -41,6 +41,7 @@ jobs:
         working-directory: tools/mdeditor
         run: |
           npm ci
+          npm test
           npm run build
           if ! diff --strip-trailing-cr -q dist/mdeditor.bundle.js ../../stickypad/Assets/mdeditor/mdeditor.bundle.js; then
             echo "::error::Editor bundle is out of date. Run 'npm run build' in tools/mdeditor and copy dist/mdeditor.bundle.js to stickypad/Assets/mdeditor/."

@@ -742,6 +742,63 @@ public class HtmlRendererTests
         var html = HtmlRenderer.Render("a < b & c", NoteContentFormat.PlainText, Theme);
         Assert.Contains("a &lt; b &amp; c", html);
     }
+
+    // ── 코드블록 구문 강조 (spec-1 §5-2) ─────────────────────────────────────
+
+    [Fact]
+    public void Render_FencedCSharp_IsHighlightedInlineStyles()
+    {
+        var html = HtmlRenderer.Render("```csharp\nvar x = \"s\";\n```", NoteContentFormat.Markdown, Theme);
+        Assert.Contains("style=", html);            // 인라인 스타일 하이라이트 스팬
+        Assert.Contains("var", html);               // 원문 코드 텍스트 보존
+        Assert.DoesNotContain("<script", html, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Render_FencedHtmlWithScript_DoesNotEmitExecutableScript()
+    {
+        // 하이라이트 경로에서도 코드 본문은 항상 이스케이프 — 실행 가능한 <script> 태그가 나오면 안 된다.
+        var html = HtmlRenderer.Render("```html\n<script>alert(1)</script>\n```", NoteContentFormat.Markdown, Theme);
+        Assert.DoesNotContain("<script>alert(1)</script>", html);
+        Assert.Contains("alert(1)", html);          // 텍스트로는 남아 있어야(이스케이프된 형태)
+    }
+
+    [Fact]
+    public void Render_UnsupportedLanguage_FallsBackToEscapedPre()
+    {
+        // 미지원 언어는 기존과 동일한 <pre><code> 이스케이프 폴백.
+        var html = HtmlRenderer.Render("```zig\nconst a = <b>;\n```", NoteContentFormat.Markdown, Theme);
+        Assert.Contains("<pre><code", html);
+        Assert.Contains("&lt;b&gt;", html);
+    }
+
+    [Fact]
+    public void Render_InlineCode_NotHighlighted()
+    {
+        var html = HtmlRenderer.Render("say `var x` here", NoteContentFormat.Markdown, Theme);
+        Assert.Contains("<code>var x</code>", html);   // 인라인 코드는 기존 스타일 그대로
+    }
+
+    [Fact]
+    public void RenderDocument_HighlightsFencedCode_AndKeepsStrictCsp()
+    {
+        var note = new Note
+        {
+            Title = "t", Format = NoteContentFormat.Markdown,
+            Content = "```js\nconst n = 1;\n```", PlainText = "const n = 1;",
+        };
+        var html = HtmlRenderer.RenderDocument(new[] { note }, "doc");
+        Assert.Contains("style=", html);                                     // 내보내기에도 하이라이트 적용
+        Assert.Contains("default-src 'none'; img-src data:; media-src data:; ", html); // 엄격 CSP 불변
+        Assert.DoesNotContain("<script", html, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Render_JsonAlias_MapsToHighlighter()
+    {
+        var html = HtmlRenderer.Render("```json\n{ \"k\": 1 }\n```", NoteContentFormat.Markdown, Theme);
+        Assert.Contains("style=", html);            // json → js 근사 매핑으로 하이라이트
+    }
 }
 
 public class UpdateServiceVersionTests

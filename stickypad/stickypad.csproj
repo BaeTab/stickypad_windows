@@ -9,9 +9,9 @@
         <LangVersion>latest</LangVersion>
         <RootNamespace>StickyPad</RootNamespace>
         <AssemblyName>StickyPad</AssemblyName>
-        <Version>2.2.2</Version>
-        <AssemblyVersion>2.2.2.0</AssemblyVersion>
-        <FileVersion>2.2.2.0</FileVersion>
+        <Version>2.3.0</Version>
+        <AssemblyVersion>2.3.0.0</AssemblyVersion>
+        <FileVersion>2.3.0.0</FileVersion>
         <ApplicationManifest>app.manifest</ApplicationManifest>
         <ApplicationIcon>app.ico</ApplicationIcon>
     </PropertyGroup>
@@ -31,6 +31,9 @@
 
     <ItemGroup>
         <PackageReference Include="Markdig" Version="1.3.2" />
+        <!-- 코드블록 구문 강조(오프라인, 인라인 스타일 → CSP·스크립트OFF 불변). CommunityToolkit/ColorCode-Universal, MIT. -->
+        <PackageReference Include="ColorCode.Core" Version="2.0.15" />
+        <PackageReference Include="ColorCode.HTML" Version="2.0.15" />
         <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4022.49" />
         <PackageReference Include="WPF-UI" Version="3.0.5" />
         <PackageReference Include="CommunityToolkit.Mvvm" Version="8.3.2" />

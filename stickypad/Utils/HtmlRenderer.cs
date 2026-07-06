@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net;
 using System.Text;
 using System.Windows.Media;
@@ -20,11 +21,25 @@ public static class HtmlRenderer
         source ??= string.Empty;
         var body = format switch
         {
-            NoteContentFormat.Markdown => Markdown.ToHtml(source, Pipeline),
+            NoteContentFormat.Markdown => ToHtmlHighlighted(source),
             NoteContentFormat.Html => source,
             _ => "<pre>" + WebUtility.HtmlEncode(source) + "</pre>",
         };
         return Wrap(body, theme);
+    }
+
+    /// Markdown → HTML. 기본 파이프라인에 펜스 코드블록 하이라이트 렌더러만 교체해
+    /// 미리보기·내보내기·인쇄가 동일한 출력을 쓴다(스크립트 0, CSP 불변).
+    internal static string ToHtmlHighlighted(string source)
+    {
+        var writer = new StringWriter();
+        var renderer = new Markdig.Renderers.HtmlRenderer(writer);
+        Pipeline.Setup(renderer);
+        renderer.ObjectRenderers.RemoveAll(r => r is Markdig.Renderers.Html.CodeBlockRenderer);
+        renderer.ObjectRenderers.Add(new CodeBlockHighlightRenderer());
+        renderer.Render(Markdown.Parse(source, Pipeline));
+        writer.Flush();
+        return writer.ToString();
     }
 
     private static string Wrap(string body, NoteTheme theme)
@@ -90,7 +105,7 @@ public static class HtmlRenderer
 
             var body = note.Format switch
             {
-                NoteContentFormat.Markdown => Markdown.ToHtml(note.Content ?? string.Empty, Pipeline),
+                NoteContentFormat.Markdown => ToHtmlHighlighted(note.Content ?? string.Empty),
                 NoteContentFormat.Html => note.Content ?? string.Empty,
                 // PlainText / RichTextXaml 은 사람이 읽을 수 있는 PlainText 투영을 그대로 이스케이프.
                 _ => "<pre>" + WebUtility.HtmlEncode((note.PlainText ?? string.Empty).TrimEnd()) + "</pre>",

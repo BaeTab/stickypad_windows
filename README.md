@@ -60,7 +60,7 @@ Switch a note between **Text / Markdown / HTML** and it renders on the spot:
 > Screenshots live in [`docs/images/`](docs/images). Replace the placeholders with your own captures anytime.
 
 ### WYSIWYG Markdown editing
-Toggle **✎** on a Markdown note for live‑preview editing — headings, **bold**, *italic*, `code`, quotes and lists render inline as you type, and the markdown markers hide on lines you're not editing (Obsidian‑style). Your note is still saved as plain Markdown source, so it round‑trips cleanly with Vault `.md` files. Turn ✎ off anytime for raw source editing.
+Toggle **✎** on a Markdown note for live‑preview editing — headings, **bold**, *italic*, `code`, quotes and lists render inline as you type, and the markdown markers hide on lines you're not editing (Obsidian‑style). Your note is still saved as plain Markdown source, so it round‑trips cleanly with Vault `.md` files. Turn ✎ off anytime for raw source editing. Checkboxes are clickable, fenced code blocks are syntax‑highlighted (editor and preview/export), and lists auto‑continue on Enter.
 
 ![WYSIWYG Markdown editing](docs/images/wysiwyg.png)
 

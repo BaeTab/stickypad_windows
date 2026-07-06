@@ -4,9 +4,48 @@ import { EditorView, keymap, drawSelection, highlightActiveLine, placeholder } f
 import { EditorState, Prec, RangeSetBuilder, EditorSelection } from "@codemirror/state";
 import { history, defaultKeymap, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
-import { syntaxTree, syntaxHighlighting, HighlightStyle } from "@codemirror/language";
+import {
+  syntaxTree, syntaxHighlighting, HighlightStyle, LanguageDescription, StreamLanguage, LanguageSupport,
+} from "@codemirror/language";
 import { tags as t } from "@lezer/highlight";
-import { Decoration, ViewPlugin } from "@codemirror/view";
+import { Decoration, ViewPlugin, WidgetType } from "@codemirror/view";
+import { taskToggleChange } from "./core.mjs";
+
+// ── 코드블록 구문 강조: 정적 임포트 큐레이션 세트(1차 지원 언어) ─────────────
+import { javascript } from "@codemirror/lang-javascript";
+import { python } from "@codemirror/lang-python";
+import { html } from "@codemirror/lang-html";
+import { css } from "@codemirror/lang-css";
+import { json } from "@codemirror/lang-json";
+import { sql } from "@codemirror/lang-sql";
+import { xml } from "@codemirror/lang-xml";
+import { cpp } from "@codemirror/lang-cpp";
+import { java } from "@codemirror/lang-java";
+import { csharp } from "@codemirror/legacy-modes/mode/clike";
+import { shell } from "@codemirror/legacy-modes/mode/shell";
+import { yaml } from "@codemirror/legacy-modes/mode/yaml";
+import { powerShell } from "@codemirror/legacy-modes/mode/powershell";
+
+const streamLang = (parser) => new LanguageSupport(StreamLanguage.define(parser));
+
+const codeLanguages = [
+  LanguageDescription.of({ name: "javascript", alias: ["js", "jsx", "node"],
+    load: async () => javascript({ jsx: true }) }),
+  LanguageDescription.of({ name: "typescript", alias: ["ts", "tsx"],
+    load: async () => javascript({ typescript: true, jsx: true }) }),
+  LanguageDescription.of({ name: "python", alias: ["py"], load: async () => python() }),
+  LanguageDescription.of({ name: "html", alias: ["htm"], load: async () => html() }),
+  LanguageDescription.of({ name: "css", load: async () => css() }),
+  LanguageDescription.of({ name: "json", load: async () => json() }),
+  LanguageDescription.of({ name: "sql", load: async () => sql() }),
+  LanguageDescription.of({ name: "xml", load: async () => xml() }),
+  LanguageDescription.of({ name: "cpp", alias: ["c", "c++", "cc", "h"], load: async () => cpp() }),
+  LanguageDescription.of({ name: "java", load: async () => java() }),
+  LanguageDescription.of({ name: "csharp", alias: ["cs", "c#"], load: async () => streamLang(csharp) }),
+  LanguageDescription.of({ name: "shell", alias: ["bash", "sh", "zsh"], load: async () => streamLang(shell) }),
+  LanguageDescription.of({ name: "yaml", alias: ["yml"], load: async () => streamLang(yaml) }),
+  LanguageDescription.of({ name: "powershell", alias: ["ps1"], load: async () => streamLang(powerShell) }),
+];
 
 // ── 인라인 토큰 색/두께 (마크다운 소스를 서식처럼 보이게) ──────────────────
 const hl = HighlightStyle.define([
@@ -22,6 +61,16 @@ const hl = HighlightStyle.define([
   { tag: t.monospace, fontFamily: "Consolas, 'Cascadia Mono', monospace", background: "rgba(0,0,0,.06)" },
   { tag: t.quote, color: "#6b7280", fontStyle: "italic" },
   { tag: [t.processingInstruction, t.contentSeparator], color: "#9aa0a6" },
+  // ── 코드블록 구문 강조 토큰 색(라이트 팔레트 단일, §2-3) ──────────────────
+  { tag: t.keyword, color: "#7c3aed" },
+  { tag: [t.string, t.special(t.string)], color: "#15803d" },
+  { tag: t.comment, color: "#9ca3af", fontStyle: "italic" },
+  { tag: [t.number, t.bool, t.atom], color: "#b45309" },
+  { tag: [t.typeName, t.className, t.namespace], color: "#0e7490" },
+  { tag: [t.function(t.variableName), t.function(t.propertyName)], color: "#1d4ed8" },
+  { tag: [t.operator, t.punctuation], color: "#6b7280" },
+  { tag: [t.propertyName, t.attributeName], color: "#a21caf" },
+  { tag: [t.tagName], color: "#be123c" },
 ]);
 
 // ── 라이브 프리뷰: 커서가 없는 줄에서는 마크다운 마커를 숨긴다 ───────────────
@@ -29,6 +78,21 @@ const HIDE_NODES = new Set([
   "HeaderMark", "EmphasisMark", "StrikethroughMark", "CodeMark", "QuoteMark", "LinkMark",
 ]);
 const hiddenDeco = Decoration.replace({});
+
+// ── 클릭 가능한 태스크 체크박스: `- [ ]`/`- [x]` 의 TaskMarker 를 실제 체크박스로 ──
+class TaskCheckbox extends WidgetType {
+  constructor(checked) { super(); this.checked = checked; }
+  eq(other) { return other.checked === this.checked; }
+  toDOM() {
+    const box = document.createElement("input");
+    box.type = "checkbox";
+    box.checked = this.checked;
+    box.className = "cm-task-toggle";
+    return box;
+  }
+  // 이벤트를 CM 으로 흘려 livePreview 의 mousedown 핸들러가 토글을 처리하게 한다.
+  ignoreEvent() { return false; }
+}
 
 function activeLines(state) {
   const set = new Set();
@@ -46,11 +110,30 @@ function buildDecorations(view) {
     syntaxTree(view.state).iterate({
       from, to,
       enter: (node) => {
+        const line = view.state.doc.lineAt(node.from).number;
+
+        // 태스크 체크박스: 커서 없는 줄의 TaskMarker([ ]/[x], 3문자)를 클릭 위젯으로 치환
+        if (node.name === "TaskMarker") {
+          if (!act.has(line)) {
+            const checked = /x/i.test(view.state.doc.sliceString(node.from, node.to));
+            builder.add(node.from, node.to, Decoration.replace({ widget: new TaskCheckbox(checked) }));
+          }
+          return;
+        }
+        // 태스크 줄의 "- " 불릿은 숨긴다(체크박스만 보이게). Task 를 형제로 둔 ListMark 한정.
+        if (node.name === "ListMark" && node.node.nextSibling && node.node.nextSibling.name === "Task") {
+          if (!act.has(line)) {
+            let end = node.to;
+            if (view.state.doc.sliceString(end, end + 1) === " ") end += 1;
+            if (end > node.from) builder.add(node.from, end, hiddenDeco);
+          }
+          return;
+        }
+
         const isMark = HIDE_NODES.has(node.name);
         // 인라인 링크 `[텍스트](url)` 의 URL 도 숨겨 링크 텍스트만 보이게
         const isLinkUrl = node.name === "URL" && node.node.parent && node.node.parent.name === "Link";
         if (!isMark && !isLinkUrl) return;
-        const line = view.state.doc.lineAt(node.from).number;
         if (act.has(line)) return;            // 편집 중인 줄은 원본 마커를 그대로 보여줌
         let end = node.to;
         if (node.name === "HeaderMark") {
@@ -73,7 +156,21 @@ const livePreview = ViewPlugin.fromClass(
       }
     }
   },
-  { decorations: (v) => v.decorations }
+  {
+    decorations: (v) => v.decorations,
+    eventHandlers: {
+      // 체크박스 클릭 → 문서의 TaskMarker 3문자 등길이 토글. true 반환으로 CM 이
+      // preventDefault 하므로 커서/선택은 움직이지 않고, 등길이 치환이라 위치도 보존된다.
+      mousedown(e, view) {
+        const t = e.target;
+        if (t && t.nodeName === "INPUT" && t.classList.contains("cm-task-toggle")) {
+          const spec = taskToggleChange(view.state, view.posAtDOM(t));
+          if (spec) { view.dispatch({ changes: spec, userEvent: "input" }); return true; }
+        }
+        return false;
+      },
+    },
+  }
 );
 
 const theme = EditorView.theme({
@@ -237,14 +334,17 @@ function createEditor(initial) {
         drawSelection(),
         highlightActiveLine(),
         EditorView.lineWrapping,
-        markdown({ base: markdownLanguage, addKeymap: true }),
+        markdown({ base: markdownLanguage, addKeymap: true, codeLanguages }),
         syntaxHighlighting(hl),
         livePreview,
         theme,
         changeListener,
         placeholder(L.placeholder),
         Prec.high(formatKeymap),
-        Prec.high(keymap.of([indentWithTab, ...defaultKeymap, ...historyKeymap])),
+        // 불변식: lang-markdown 의 Enter/Backspace(insertNewlineContinueMarkup /
+        // deleteMarkupBackward)는 Prec.high 로 등록되므로(6.5.0 dist L421) 이 키맵보다 항상 먼저 본다.
+        // 여기를 다시 Prec.high 로 올리면 배열 순서에 따라 리스트 이어쓰기가 죽을 수 있다 — 올리지 말 것.
+        keymap.of([indentWithTab, ...defaultKeymap, ...historyKeymap]),
       ],
     }),
   });
@@ -295,13 +395,30 @@ createEditor(demo);
 wireToolbar();
 view.contentDOM.addEventListener("blur", () => { clearTimeout(debounce); postChange(); });
 
-// 셀프테스트(?selftest=1): 명령이 실제로 마크다운 문법을 넣는지 확인용.
+// 셀프테스트(?selftest=1): 명령·체크박스 위젯이 실제로 동작하는지 확인용.
 if (params.has("selftest")) {
+  const results = {};
+
+  // 1) bold 명령: 선택 영역을 ** 로 감싼다
   window.SPEditor.setMarkdown("bold me");
   view.dispatch({ selection: EditorSelection.single(0, view.state.doc.length) });
   window.SPEditor.exec("bold");
+  results.bold = window.SPEditor.getMarkdown();
+
+  // 2) 체크박스: 커서 없는 줄에 위젯이 뜨고, 토글이 소스에 반영된다
+  window.SPEditor.setMarkdown("- [ ] todo\n\nplain");
+  view.dispatch({ selection: EditorSelection.single(view.state.doc.length) });  // 커서를 마지막 줄로
+  const spec = taskToggleChange(view.state, view.state.doc.line(1).from + 2);   // "- " 뒤 = TaskMarker
+  if (spec) view.dispatch({ changes: spec });
+  results.toggled = window.SPEditor.getMarkdown();
+
   const el = document.getElementById("selftest");
-  if (el) el.textContent = JSON.stringify(window.SPEditor.getMarkdown());
+  const finish = () => {
+    results.widgets = document.querySelectorAll(".cm-task-toggle").length;      // 렌더 후 집계
+    if (el) el.textContent = JSON.stringify(results);
+  };
+  if (el) el.textContent = JSON.stringify(results);
+  setTimeout(finish, 80);
 }
 
 // 호스트에 준비 완료 통지

@@ -5,6 +5,16 @@ All notable changes to StickyPad are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This file starts from the point it was introduced — earlier history lives in the git log.
 
+## [2.3.0] - 2026-07-06
+
+### Added
+- 위지윅 편집에서 `- [ ]` 체크박스를 **클릭으로 토글** — 커서가 없는 줄에서 실제 체크박스로 표시되고, 클릭하면 소스의 `[ ]`↔`[x]`가 등길이로 치환되어 커서·서식이 보존된다.
+- **코드블록 구문 강조** — ```` ```js ```` 등 펜스 코드블록을 위지윅 편집기(CodeMirror 언어팩 14종)와 렌더 미리보기·HTML/PDF 내보내기(ColorCode, 인라인 스타일) 양쪽에서 하이라이트. 스크립트 0줄로 기존 CSP·스크립트 차단 불변식 유지.
+- 리스트 자동 이어쓰기 회귀 고정 — Enter 시 목록 마커 자동 이어쓰기·번호 증가·빈 항목 해제가 계속 동작하도록 keymap 우선순위를 명시화하고 Node 셀프테스트(21종)를 CI에 편입.
+
+### Dependencies
+- ColorCode-Universal(ColorCode.Core/ColorCode.HTML 2.0.15, MIT, CommunityToolkit) 추가. 에디터 번들 크기 +283KB(언어팩).
+
 ## [2.2.2] - 2026-07-06
 
 ### Changed
