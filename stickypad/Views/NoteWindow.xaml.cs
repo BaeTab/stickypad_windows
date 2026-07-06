@@ -100,6 +100,8 @@ public partial class NoteWindow : Window
         Deactivated += (_, _) => UpdateToolbarVisibility();
         MouseEnter += (_, _) => UpdateToolbarVisibility();
         MouseLeave += (_, _) => UpdateToolbarVisibility();
+        // 트레이로 숨긴 노트의 WebView2 메모리 사용을 낮춘다(다시 보이면 복원) — 베스트-에포트.
+        IsVisibleChanged += (_, e) => SetWebViewMemoryLevel(low: !(bool)e.NewValue);
         viewModel.PropertyChanged += (_, args) =>
         {
             if (args.PropertyName == nameof(NoteViewModel.IsPreviewMode))
@@ -351,6 +353,17 @@ public partial class NoteWindow : Window
 
     private bool IsMarkup =>
         _viewModel.Format is NoteContentFormat.Markdown or NoteContentFormat.Html;
+
+    /// 숨겨진 노트의 WebView2 렌더러 메모리를 낮추고(다시 보이면 복원) — 트레이로 여러 노트를
+    /// 감춰둘 때 백그라운드 메모리를 줄인다. 생성된 WebView 에만 적용, 실패해도 무해(hint).
+    private void SetWebViewMemoryLevel(bool low)
+    {
+        var level = low
+            ? CoreWebView2MemoryUsageTargetLevel.Low
+            : CoreWebView2MemoryUsageTargetLevel.Normal;
+        try { if (Preview.CoreWebView2 is { } p) p.MemoryUsageTargetLevel = level; } catch { /* best-effort */ }
+        try { if (WysiwygEditor.CoreWebView2 is { } w) w.MemoryUsageTargetLevel = level; } catch { /* best-effort */ }
+    }
 
     private string GetEditorPlainText() =>
         new TextRange(Editor.Document.ContentStart, Editor.Document.ContentEnd).Text.TrimEnd('\r', '\n');

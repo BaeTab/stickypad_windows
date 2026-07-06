@@ -5,6 +5,11 @@ All notable changes to StickyPad are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This file starts from the point it was introduced — earlier history lives in the git log.
 
+## [2.2.2] - 2026-07-06
+
+### Changed
+- 트레이로 숨긴 노트의 WebView2(미리보기·위지윅 편집) 메모리 사용량을 낮추고, 다시 표시하면 복원 — 여러 노트를 감춰둘 때 백그라운드 메모리를 절감(베스트-에포트, 스크립트는 계속 실행).
+
 ## [2.2.1] - 2026-07-06
 
 ### Fixed
