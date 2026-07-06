@@ -329,6 +329,48 @@ public sealed class WindowManager : IWindowManager
         }
     }
 
+    public bool TryGetLiveNoteContent(Guid id, out string content, out NoteContentFormat format)
+    {
+        var win = _windows.FirstOrDefault(w => w.ViewModel.Id == id);
+        if (win is null)
+        {
+            content = string.Empty;
+            format = default;
+            return false;
+        }
+        // 디바운스 창(≤500ms) 동안 DB 는 구본 — 라이브 VM 이 최신이다.
+        content = win.ViewModel.Content;
+        format = win.ViewModel.Format;
+        return true;
+    }
+
+    public async Task<bool> TryUpdateLiveNoteContentAsync(Guid id, string newContent)
+    {
+        var win = _windows.FirstOrDefault(w => w.ViewModel.Id == id);
+        if (win is null) return false;
+        await win.ApplyLocalEditAsync(newContent).ConfigureAwait(true);
+        return true;
+    }
+
+    public void OpenQuickSwitcher()
+    {
+        // 목록 창과 달리 매번 새로 생성 — 팝업은 가볍고, 숨김 캐시는 stale 스냅샷·포커스 문제만 만든다.
+        var vm = _services.GetRequiredService<QuickSwitcherViewModel>();
+        var window = new QuickSwitcherWindow(vm);
+        window.Show();
+        window.Activate();
+    }
+
+    public void OpenTodoView()
+    {
+        if (_notesListWindow is null)
+        {
+            var vm = _services.GetRequiredService<NotesListViewModel>();
+            _notesListWindow = new NotesListWindow(vm);
+        }
+        _ = _notesListWindow.ShowTodoTabAsync();
+    }
+
     /// 미저장 편집 판정용 내용 비교 — 끝 공백·CRLF 차이는 편집으로 치지 않는다
     /// (볼트 직렬화가 어차피 정규화하는 부분이라 유령 프롬프트만 만든다).
     private static bool VaultContentEquals(string? a, string? b) =>

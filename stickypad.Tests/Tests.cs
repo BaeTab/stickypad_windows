@@ -566,6 +566,93 @@ public class VaultBootstrapTests
     }
 }
 
+public class TodoExtractionTests
+{
+    // ── 추출 ──────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void Extract_RecognizesBulletsIndentAndCase()
+    {
+        var src = "- [ ] one\n* [x] two\n  + [X] three\n- not a task\ntext [ ] middle\n";
+        var tasks = TodoExtraction.ExtractTasks(src);
+
+        Assert.Equal(3, tasks.Count);
+        Assert.Equal((0, false, "one"), (tasks[0].LineIndex, tasks[0].IsChecked, tasks[0].Text));
+        Assert.Equal((1, true, "two"), (tasks[1].LineIndex, tasks[1].IsChecked, tasks[1].Text));
+        Assert.Equal((2, true, "three"), (tasks[2].LineIndex, tasks[2].IsChecked, tasks[2].Text));
+    }
+
+    [Fact]
+    public void Extract_EmptyTextAndEmptySource()
+    {
+        Assert.Empty(TodoExtraction.ExtractTasks(""));
+        Assert.Empty(TodoExtraction.ExtractTasks(null));
+        var only = Assert.Single(TodoExtraction.ExtractTasks("- [ ] "));
+        Assert.Equal(string.Empty, only.Text);           // 텍스트 없는 체크박스도 항목
+    }
+
+    // ── 토글: 바이트 단위 보존이 핵심 ─────────────────────────────────────────
+
+    [Theory]
+    [InlineData("- [ ] a\n- [ ] b\n")]                    // LF
+    [InlineData("- [ ] a\r\n- [ ] b\r\n")]                // CRLF
+    [InlineData("- [ ] a\r\n- [ ] b\n- [ ] c")]           // 혼합 + 말미 개행 없음
+    public void Toggle_RoundTrip_IsByteIdentical(string src)
+    {
+        var tasks = TodoExtraction.ExtractTasks(src);
+        var toggled = TodoExtraction.ToggleLine(src, tasks[1].LineIndex, tasks[1].RawLine, check: true);
+        Assert.NotNull(toggled);
+
+        // 정확히 1글자만 다르다
+        Assert.Equal(src.Length, toggled!.Length);
+        Assert.Equal(1, src.Zip(toggled).Count(p => p.First != p.Second));
+
+        // 되돌리면 바이트 단위 원본
+        var backTasks = TodoExtraction.ExtractTasks(toggled);
+        var back = TodoExtraction.ToggleLine(toggled, backTasks[1].LineIndex, backTasks[1].RawLine, check: false);
+        Assert.Equal(src, back);
+    }
+
+    [Fact]
+    public void Toggle_UppercaseX_UnchecksToSpace()
+    {
+        var result = TodoExtraction.ToggleLine("- [X] done", 0, "- [X] done", check: false);
+        Assert.Equal("- [ ] done", result);
+    }
+
+    [Fact]
+    public void Toggle_StaleLine_ReturnsNull()
+    {
+        var src = "- [ ] a\n- [ ] b";
+        Assert.Null(TodoExtraction.ToggleLine(src, 1, "- [ ] EDITED", check: true));   // 줄이 달라짐
+        Assert.Null(TodoExtraction.ToggleLine(src, 9, "- [ ] b", check: true));        // 범위 밖
+        Assert.Null(TodoExtraction.ToggleLine(src, 0, "plain text", check: true));     // 체크박스 줄 아님
+    }
+
+    [Fact]
+    public void Toggle_DuplicateLines_TogglesExactIndexOnly()
+    {
+        var src = "- [ ] same\n- [ ] same\n- [ ] same";
+        var result = TodoExtraction.ToggleLine(src, 1, "- [ ] same", check: true);
+        Assert.Equal("- [ ] same\n- [x] same\n- [ ] same", result);
+    }
+
+    [Fact]
+    public void Toggle_AlreadyDesiredState_ReturnsSourceUnchanged()
+    {
+        var src = "- [x] done";
+        Assert.Equal(src, TodoExtraction.ToggleLine(src, 0, "- [x] done", check: true));
+    }
+
+    [Fact]
+    public void Toggle_PreservesIndentAndSurroundingText()
+    {
+        var src = "# 제목\n\n  - [ ] 들여쓴 항목  \n본문";
+        var result = TodoExtraction.ToggleLine(src, 2, "  - [ ] 들여쓴 항목  ", check: true);
+        Assert.Equal("# 제목\n\n  - [x] 들여쓴 항목  \n본문", result);
+    }
+}
+
 public class VaultIdDuplicateTests
 {
     private static string NewDir() =>
@@ -1596,5 +1683,115 @@ public class ExternalAppLocatorTests
             _ => null,
         };
         Assert.Null(ExternalAppLocator.FindVsCode(_ => false, Env));
+    }
+}
+
+public class FuzzyMatcherTests
+{
+    [Fact]
+    public void Match_SubsequenceInOrder_Succeeds()
+    {
+        // "rls" 는 "release"의 부분수열(r-e-l-e-a-s-e 중 r,l,s 순서 유지).
+        var result = FuzzyMatcher.Match("release notes", "rls");
+        Assert.True(result.Matched);
+    }
+
+    [Fact]
+    public void Match_OutOfOrderChars_Fails()
+    {
+        // "slr" 은 "release" 안에서 순서를 지켜서는 찾을 수 없다(s 다음에 l 이 없음).
+        var result = FuzzyMatcher.Match("release", "slr");
+        Assert.False(result.Matched);
+    }
+
+    [Fact]
+    public void Match_IsCaseInsensitive()
+    {
+        var result = FuzzyMatcher.Match("Release Notes", "RELEASE");
+        Assert.True(result.Matched);
+    }
+
+    [Fact]
+    public void Match_KoreanTitle_MatchesAsSubsequence()
+    {
+        var result = FuzzyMatcher.Match("회의록 정리", "회정");
+        Assert.True(result.Matched);
+    }
+
+    [Fact]
+    public void Match_ConsecutiveRun_ScoresHigherThanScatteredMatch()
+    {
+        var consecutive = FuzzyMatcher.Match("abcdef", "abc");
+        var scattered = FuzzyMatcher.Match("axbxcx", "abc");
+        Assert.True(consecutive.Matched);
+        Assert.True(scattered.Matched);
+        Assert.True(consecutive.Score > scattered.Score);
+    }
+
+    [Fact]
+    public void Match_WordStartMatch_ScoresHigherThanMidWordMatch()
+    {
+        var wordStart = FuzzyMatcher.Match("release notes", "notes");   // "notes" 는 공백 뒤 단어 시작
+        var midWord = FuzzyMatcher.Match("xnotes", "notes");            // 같은 연속 매칭이지만 단어 중간
+        Assert.True(wordStart.Score > midWord.Score);
+    }
+
+    [Fact]
+    public void Match_TitleRegion_ScoresHigherThanTagRegion()
+    {
+        const string target = "release notes";
+        var inTitle = FuzzyMatcher.Match(target, "notes", titleLength: target.Length);   // 전체를 제목으로 취급
+        var inTag = FuzzyMatcher.Match(target, "notes", titleLength: 0);                 // 전체를 태그로 취급
+        Assert.True(inTitle.Score > inTag.Score);
+    }
+
+    [Fact]
+    public void Match_EarlierFirstMatch_ScoresHigherThanLaterMatch_AllElseEqual()
+    {
+        // 둘 다 연속 매칭이고 단어 시작이 아니므로(run/word-start 보너스가 같음), 첫 매칭 위치 보너스만 갈린다.
+        var earlier = FuzzyMatcher.Match("xabc", "abc");
+        var later = FuzzyMatcher.Match("xxxxxabc", "abc");
+        Assert.True(earlier.Score > later.Score);
+    }
+
+    [Fact]
+    public void Match_MultipleTokens_RequireAllToMatch()
+    {
+        var bothMatch = FuzzyMatcher.Match("release notes final", "rel fin");
+        var oneMissing = FuzzyMatcher.Match("release notes final", "rel xyz");
+        Assert.True(bothMatch.Matched);
+        Assert.False(oneMissing.Matched);
+    }
+
+    [Fact]
+    public void Match_EmptyQuery_MatchesEverythingWithZeroScore()
+    {
+        var result = FuzzyMatcher.Match("anything at all", "");
+        Assert.True(result.Matched);
+        Assert.Equal(0, result.Score);
+        Assert.Empty(result.Positions);
+    }
+
+    [Fact]
+    public void Match_NoMatch_ReturnsEmptyPositionsAndZeroScore()
+    {
+        var result = FuzzyMatcher.Match("hello", "xyz");
+        Assert.False(result.Matched);
+        Assert.Equal(0, result.Score);
+        Assert.Empty(result.Positions);
+    }
+
+    [Fact]
+    public void Match_Positions_AreValidSortedIndicesIntoTarget()
+    {
+        var target = "hello world";
+        var result = FuzzyMatcher.Match(target, "how");
+        Assert.True(result.Matched);
+        Assert.NotEmpty(result.Positions);
+        foreach (var pos in result.Positions)
+        {
+            Assert.InRange(pos, 0, target.Length - 1);
+        }
+        Assert.Equal(result.Positions.OrderBy(p => p).Distinct(), result.Positions);
     }
 }

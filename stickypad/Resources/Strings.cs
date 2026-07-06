@@ -50,6 +50,7 @@ public static class Strings
     public static string Bulk_DeleteConfirmFormat => Get(nameof(Bulk_DeleteConfirmFormat));
     public static string NoteList_TabActive => Get(nameof(NoteList_TabActive));
     public static string NoteList_TabTrash => Get(nameof(NoteList_TabTrash));
+    public static string NoteList_TabTodos => Get(nameof(NoteList_TabTodos));
     public static string NoteList_EmptyTrashButton => Get(nameof(NoteList_EmptyTrashButton));
     public static string NoteList_SelectForExportTooltip => Get(nameof(NoteList_SelectForExportTooltip));
     public static string NoteList_Delete => Get(nameof(NoteList_Delete));
@@ -64,12 +65,18 @@ public static class Strings
     public static string NoteList_EmptyNoMatch => Get(nameof(NoteList_EmptyNoMatch));
     public static string NoteList_Untitled => Get(nameof(NoteList_Untitled));
 
+    public static string Todo_HideCompleted => Get(nameof(Todo_HideCompleted));
+    public static string Todo_EmptyMessage => Get(nameof(Todo_EmptyMessage));
+    public static string Todo_GroupCountFormat => Get(nameof(Todo_GroupCountFormat));
+
     public static string Tray_Tooltip => Get(nameof(Tray_Tooltip));
     public static string Tray_NewNote => Get(nameof(Tray_NewNote));
     public static string Tray_NewFromTemplate => Get(nameof(Tray_NewFromTemplate));
     public static string Tray_OpenMarkdownFile => Get(nameof(Tray_OpenMarkdownFile));
     public static string Tray_OpenMarkdownDialogTitle => Get(nameof(Tray_OpenMarkdownDialogTitle));
     public static string Tray_AllNotes => Get(nameof(Tray_AllNotes));
+    public static string Tray_TodoView => Get(nameof(Tray_TodoView));
+    public static string Tray_QuickSwitcher => Get(nameof(Tray_QuickSwitcher));
     public static string Tray_Settings => Get(nameof(Tray_Settings));
     public static string Tray_ShowAll => Get(nameof(Tray_ShowAll));
     public static string Tray_HideAll => Get(nameof(Tray_HideAll));
@@ -194,4 +201,7 @@ public static class Strings
     public static string Template_DailyLog => Get(nameof(Template_DailyLog));
     public static string Template_Meeting => Get(nameof(Template_Meeting));
     public static string Template_Todo => Get(nameof(Template_Todo));
+
+    public static string QuickSwitcher_Placeholder => Get(nameof(QuickSwitcher_Placeholder));
+    public static string QuickSwitcher_NoResults => Get(nameof(QuickSwitcher_NoResults));
 }

@@ -28,4 +28,16 @@ public interface IWindowManager
 
     /// 볼트 감시가 계산한 외부 변경 diff 를 열린 창에 세밀 반영한다(UI 스레드에서만 호출).
     Task ApplyVaultDiffAsync(VaultDiff diff);
+
+    /// 열린 창이 있으면 그 창 VM 의 (디바운스로 아직 저장 안 된 것 포함) 최신 콘텐츠를 반환.
+    bool TryGetLiveNoteContent(Guid id, out string content, out Models.NoteContentFormat format);
+
+    /// 열린 창의 에디터·VM 에 새 콘텐츠를 주입(디바운스 저장 유발). 창이 없으면 false.
+    Task<bool> TryUpdateLiveNoteContentAsync(Guid id, string newContent);
+
+    /// 빠른 전환기(Ctrl+P) 팝업을 연다.
+    void OpenQuickSwitcher();
+
+    /// 노트 목록 창을 '할 일' 탭 상태로 연다.
+    void OpenTodoView();
 }

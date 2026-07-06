@@ -18,6 +18,7 @@
             <u:BoolToVisibilityConverter x:Key="BoolToVis" />
             <u:InverseBoolToVisibilityConverter x:Key="InverseBoolToVis" />
             <u:ZeroCountToVisibilityConverter x:Key="ZeroToVis" />
+            <u:ViewModeToVisibilityConverter x:Key="ViewModeToVis" />
         </ResourceDictionary>
     </Application.Resources>
 </Application>

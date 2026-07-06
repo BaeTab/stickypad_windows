@@ -5,6 +5,12 @@ All notable changes to StickyPad are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This file starts from the point it was introduced — earlier history lives in the git log.
 
+## [2.4.0] - 2026-07-06
+
+### Added
+- **통합 할 일 뷰** — 노트 목록 창의 새 "할 일" 탭에서 모든 노트에 흩어진 체크박스(`- [ ]`)를 노트별로 모아 보고, 그 자리에서 체크/해제하면 원본 노트의 해당 줄이 갱신된다(열린 노트 창·연동 `.md` 파일까지 즉시 동기화, 줄바꿈·서식 바이트 단위 보존). 완료 숨기기 토글과 텍스트 필터 지원. 트레이 메뉴 "할 일 보기"로 바로 진입.
+- **빠른 전환기(Ctrl+P)** — 노트 창·목록 창 어디서든 Ctrl+P 로 제목·태그 퍼지 검색 팝업을 열어 ↑↓ Enter 로 아무 노트나 즉시 점프. 빈 검색어는 최근 수정순 목록.
+
 ## [2.3.0] - 2026-07-06
 
 ### Added

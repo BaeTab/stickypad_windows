@@ -3,6 +3,8 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using Microsoft.Extensions.DependencyInjection;
+using StickyPad.Services;
 using StickyPad.Utils;
 using StickyPad.ViewModels;
 
@@ -37,6 +39,11 @@ public partial class NotesListWindow : Window
             Hide();
             e.Handled = true;
         }
+        else if (e.Key == Key.P && Keyboard.Modifiers == ModifierKeys.Control)
+        {
+            App.Services.GetRequiredService<IWindowManager>().OpenQuickSwitcher();
+            e.Handled = true;
+        }
     }
 
     private void Card_OnMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
@@ -68,6 +75,28 @@ public partial class NotesListWindow : Window
         _viewModel.ShowTrash = false;
     }
 
+    private void TodosTab_OnClick(object sender, RoutedEventArgs e)
+    {
+        // 할 일 탭도 활성 탭과 같은 단방향 토글 패턴(IsChecked 가 OneWay).
+        _viewModel.ViewMode = NoteListViewMode.Todos;
+    }
+
+    private void TodoGroupHeader_OnMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is FrameworkElement fe && fe.DataContext is TodoGroup group)
+        {
+            _viewModel.OpenTodoNoteCommand.Execute(group.NoteId);
+        }
+    }
+
+    private void TodoItemText_OnMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is FrameworkElement fe && fe.DataContext is TodoItemViewModel item)
+        {
+            _viewModel.OpenTodoNoteCommand.Execute(item.NoteId);
+        }
+    }
+
     public async System.Threading.Tasks.Task ShowAndReloadAsync()
     {
         await _viewModel.ReloadAsync().ConfigureAwait(true);
@@ -75,5 +104,12 @@ public partial class NotesListWindow : Window
         Activate();
         SearchBox.Focus();
         SearchBox.SelectAll();
+    }
+
+    /// 트레이 '할 일 보기' 진입 — 할 일 탭 상태로 창을 연다.
+    public async System.Threading.Tasks.Task ShowTodoTabAsync()
+    {
+        _viewModel.ViewMode = NoteListViewMode.Todos;
+        await ShowAndReloadAsync().ConfigureAwait(true);
     }
 }

@@ -128,6 +128,9 @@ public partial class NoteWindow : Window
         InputBindings.Add(new KeyBinding(
             new RelayCommandImpl(_ => OpenFileViaDialog()),
             new KeyGesture(Key.O, ModifierKeys.Control)));
+        InputBindings.Add(new KeyBinding(
+            new RelayCommandImpl(_ => App.Services.GetRequiredService<IWindowManager>().OpenQuickSwitcher()),
+            new KeyGesture(Key.P, ModifierKeys.Control)));
 
         // In Markdown/HTML mode the editor is a plain source view — force paste to plain text
         // so pasted tags/markup are kept literally instead of being converted to rich text.
@@ -456,6 +459,23 @@ public partial class NoteWindow : Window
 
     /// WYSIWYG 편집이 켜져 있는지 — 볼트 감시가 "미저장 편집 있음"으로 취급하는 근거.
     internal bool IsWysiwygActive => _wysiwygOn;
+
+    /// 허브(할 일 토글 등)가 앱 내부에서 노트 내용을 바꿀 때 열린 창에 반영한다.
+    /// hydrate(<see cref="ApplyExternalContentAsync"/>)와 달리 vm.UpdateContent 를 태워
+    /// 디바운스 저장 + 연동 파일 동기화까지 일어난다 — 내용의 출처가 파일이 아니라 앱이므로.
+    internal async Task ApplyLocalEditAsync(string content)
+    {
+        if (_wysiwygOn && _wysiwyg is not null)
+        {
+            await _wysiwyg.SetMarkdownAsync(content).ConfigureAwait(true);   // JS 측은 suppress — 에코 없음
+        }
+        else
+        {
+            ReplaceEditorText(content);                                      // _suppressEditorSync 로 재진입 차단
+        }
+        _viewModel.UpdateContent(content, _viewModel.Format);                // Schedule → 디바운스 저장
+        if (!_wysiwygOn && IsMarkup && Preview.Visibility == Visibility.Visible) RenderPreview();
+    }
 
     /// 볼트 감시가 반영하는 외부 변경 적용: VM hydrate(저장 스케줄 없음) + 에디터/WYSIWYG 교체 +
     /// 미리보기 재렌더. 연동 파일 외부 변경 반영(ReloadLinkedFileAsync)과 같은 성격의 경로다.

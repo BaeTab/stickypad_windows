@@ -72,7 +72,7 @@
                     Margin="0,0,6,0"
                     VerticalAlignment="Center"
                     Background="Transparent"
-                    Visibility="{Binding ShowTrash, Converter={StaticResource InverseBoolToVis}}">
+                    Visibility="{Binding ViewMode, Converter={StaticResource ViewModeToVis}, ConverterParameter=Active}">
                     <MenuItem
                         Padding="10,4"
                         Header="{x:Static res:Strings.NoteList_Export}"
@@ -95,7 +95,7 @@
             <StackPanel
                 DockPanel.Dock="Right"
                 Orientation="Horizontal"
-                Visibility="{Binding ShowTrash, Converter={StaticResource InverseBoolToVis}}">
+                Visibility="{Binding ViewMode, Converter={StaticResource ViewModeToVis}, ConverterParameter=Active}">
                 <TextBlock
                     Margin="0,0,10,0"
                     VerticalAlignment="Center"
@@ -139,8 +139,15 @@
             </StackPanel>
 
             <ToggleButton
+                DockPanel.Dock="Right"
+                Content="{x:Static res:Strings.Todo_HideCompleted}"
+                IsChecked="{Binding HideCompletedTodos}"
+                Style="{StaticResource TabToggle}"
+                Visibility="{Binding ViewMode, Converter={StaticResource ViewModeToVis}, ConverterParameter=Todos}" />
+
+            <ToggleButton
                 Content="{x:Static res:Strings.NoteList_TabActive}"
-                IsChecked="{Binding ShowTrash, Mode=OneWay, Converter={StaticResource InverseBool}}"
+                IsChecked="{Binding IsActiveView, Mode=OneWay}"
                 Click="ActiveTab_OnClick"
                 Style="{StaticResource TabToggle}" />
             <ToggleButton
@@ -149,6 +156,15 @@
                 <TextBlock>
                     <Run Text="{x:Static res:Strings.NoteList_TabTrash}" />
                     <Run Foreground="#999" Text="{Binding TrashedCount, StringFormat={} ({0})}" />
+                </TextBlock>
+            </ToggleButton>
+            <ToggleButton
+                IsChecked="{Binding IsTodoView, Mode=OneWay}"
+                Click="TodosTab_OnClick"
+                Style="{StaticResource TabToggle}">
+                <TextBlock>
+                    <Run Text="{x:Static res:Strings.NoteList_TabTodos}" />
+                    <Run Foreground="#999" Text="{Binding OpenTodoCount, StringFormat={} ({0})}" />
                 </TextBlock>
             </ToggleButton>
             <Button
@@ -175,7 +191,7 @@
             Grid.Row="3"
             Margin="0,8,0,0"
             ItemsSource="{Binding Tags}"
-            Visibility="{Binding ShowTrash, Converter={StaticResource InverseBoolToVis}}">
+            Visibility="{Binding ViewMode, Converter={StaticResource ViewModeToVis}, ConverterParameter=Active}">
             <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>
                     <WrapPanel />
@@ -206,7 +222,8 @@
                 BorderThickness="0"
                 HorizontalContentAlignment="Stretch"
                 ItemsSource="{Binding Items}"
-                ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                Visibility="{Binding ViewMode, Converter={StaticResource ViewModeToVis}, ConverterParameter='Active,Trash'}">
                 <ListBox.Resources>
                     <Style TargetType="ListBoxItem">
                         <Setter Property="Padding" Value="0" />
@@ -331,14 +348,95 @@
                 </ListBox.ItemTemplate>
             </ListBox>
 
-            <TextBlock
-                Margin="0,40,0,0"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Top"
-                FontSize="13"
-                Foreground="#888"
-                Text="{Binding EmptyMessage}"
-                Visibility="{Binding Items.Count, Converter={StaticResource ZeroToVis}}" />
+            <Grid Visibility="{Binding ViewMode, Converter={StaticResource ViewModeToVis}, ConverterParameter='Active,Trash'}">
+                <TextBlock
+                    Margin="0,40,0,0"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Top"
+                    FontSize="13"
+                    Foreground="#888"
+                    Text="{Binding EmptyMessage}"
+                    Visibility="{Binding Items.Count, Converter={StaticResource ZeroToVis}}" />
+            </Grid>
+
+            <!-- 통합 할 일 뷰 (spec-2 §2.1) -->
+            <Grid Visibility="{Binding ViewMode, Converter={StaticResource ViewModeToVis}, ConverterParameter=Todos}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <ItemsControl ItemsSource="{Binding TodoGroups}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:TodoGroup}">
+                                <StackPanel Margin="0,0,0,14">
+                                    <Grid Cursor="Hand" MouseLeftButtonUp="TodoGroupHeader_OnMouseLeftButtonUp">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="8" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <Rectangle
+                                            Grid.Column="0"
+                                            Width="4"
+                                            Fill="{Binding AccentBrush}"
+                                            RadiusX="2"
+                                            RadiusY="2" />
+                                        <TextBlock
+                                            Grid.Column="2"
+                                            FontSize="14"
+                                            FontWeight="SemiBold"
+                                            Text="{Binding Title}"
+                                            TextTrimming="CharacterEllipsis" />
+                                        <TextBlock
+                                            Grid.Column="3"
+                                            Margin="8,0,0,0"
+                                            FontSize="12"
+                                            Foreground="#888"
+                                            Text="{Binding CountText}" />
+                                    </Grid>
+                                    <ItemsControl Margin="10,6,0,0" ItemsSource="{Binding Items}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="{x:Type vm:TodoItemViewModel}">
+                                                <StackPanel Margin="0,3,0,3" Orientation="Horizontal">
+                                                    <CheckBox
+                                                        VerticalAlignment="Center"
+                                                        Command="{Binding DataContext.ToggleTodoCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding}"
+                                                        IsChecked="{Binding IsChecked, Mode=TwoWay}" />
+                                                    <TextBlock
+                                                        Margin="6,0,0,0"
+                                                        VerticalAlignment="Center"
+                                                        Cursor="Hand"
+                                                        MouseLeftButtonUp="TodoItemText_OnMouseLeftButtonUp"
+                                                        Text="{Binding Text}">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding IsChecked}" Value="True">
+                                                                        <Setter Property="Foreground" Value="#999" />
+                                                                        <Setter Property="TextDecorations" Value="Strikethrough" />
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+
+                <TextBlock
+                    Margin="0,40,0,0"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Top"
+                    FontSize="13"
+                    Foreground="#888"
+                    Text="{Binding EmptyMessage}"
+                    Visibility="{Binding TodoGroups.Count, Converter={StaticResource ZeroToVis}}" />
+            </Grid>
         </Grid>
 
         <DockPanel Grid.Row="5" Margin="0,8,0,0">

@@ -234,6 +234,9 @@
   <data name="NoteList_TabTrash" xml:space="preserve">
     <value>Trash</value>
   </data>
+  <data name="NoteList_TabTodos" xml:space="preserve">
+    <value>To-dos</value>
+  </data>
   <data name="NoteList_EmptyTrashButton" xml:space="preserve">
     <value>Empty trash</value>
   </data>
@@ -273,6 +276,15 @@
   <data name="NoteList_Untitled" xml:space="preserve">
     <value>(untitled)</value>
   </data>
+  <data name="Todo_HideCompleted" xml:space="preserve">
+    <value>Hide completed</value>
+  </data>
+  <data name="Todo_EmptyMessage" xml:space="preserve">
+    <value>No notes contain checkboxes (- [ ])</value>
+  </data>
+  <data name="Todo_GroupCountFormat" xml:space="preserve">
+    <value>{0}/{1} done</value>
+  </data>
   <data name="Tray_Tooltip" xml:space="preserve">
     <value>StickyPad</value>
   </data>
@@ -290,6 +302,12 @@
   </data>
   <data name="Tray_AllNotes" xml:space="preserve">
     <value>All notes…  (Ctrl+Shift+L)</value>
+  </data>
+  <data name="Tray_TodoView" xml:space="preserve">
+    <value>To-do view</value>
+  </data>
+  <data name="Tray_QuickSwitcher" xml:space="preserve">
+    <value>Quick switch…</value>
   </data>
   <data name="Tray_Settings" xml:space="preserve">
     <value>Settings…</value>
@@ -676,5 +694,11 @@ Update now?
   </data>
   <data name="Template_Todo" xml:space="preserve">
     <value>To-do list</value>
+  </data>
+  <data name="QuickSwitcher_Placeholder" xml:space="preserve">
+    <value>Search note title or #tag…</value>
+  </data>
+  <data name="QuickSwitcher_NoResults" xml:space="preserve">
+    <value>No matching notes</value>
   </data>
 </root>

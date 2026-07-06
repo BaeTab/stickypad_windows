@@ -15,11 +15,15 @@ using StickyPad.Utils;
 
 namespace StickyPad.ViewModels;
 
+/// 노트 목록 창의 탭. Todos 는 모든 활성 노트의 체크박스를 모아 보는 통합 할 일 뷰(spec-2).
+public enum NoteListViewMode { Active, Trash, Todos }
+
 public sealed partial class NotesListViewModel : ObservableObject
 {
     private readonly INoteRepository _repository;
     private readonly IWindowManager _windowManager;
     private readonly IBackupService _backupService;
+    private readonly ISettingsService _settingsService;
     private readonly ILogger<NotesListViewModel> _logger;
     private readonly List<Note> _activeRaw = new();
     private readonly List<Note> _trashedRaw = new();
@@ -51,29 +55,50 @@ public sealed partial class NotesListViewModel : ObservableObject
     private int _trashedCount;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowTrash))]
+    [NotifyPropertyChangedFor(nameof(IsActiveView))]
     [NotifyPropertyChangedFor(nameof(IsTrashView))]
+    [NotifyPropertyChangedFor(nameof(IsTodoView))]
     [NotifyPropertyChangedFor(nameof(EmptyMessage))]
-    private bool _showTrash;
+    private NoteListViewMode _viewMode;
 
-    public bool IsTrashView => ShowTrash;
+    public bool IsActiveView => ViewMode == NoteListViewMode.Active;
 
-    public string EmptyMessage => ShowTrash
-        ? Strings.NoteList_EmptyTrash
-        : (string.IsNullOrWhiteSpace(SearchText) && string.IsNullOrEmpty(ActiveTag)
+    /// 기존 XAML 바인딩 호환용 — Trash 여부를 bool 로 노출(설정 시 Active↔Trash 전환).
+    public bool ShowTrash
+    {
+        get => ViewMode == NoteListViewMode.Trash;
+        set => ViewMode = value ? NoteListViewMode.Trash : NoteListViewMode.Active;
+    }
+
+    public bool IsTrashView => ViewMode == NoteListViewMode.Trash;
+    public bool IsTodoView => ViewMode == NoteListViewMode.Todos;
+
+    public string EmptyMessage => ViewMode switch
+    {
+        NoteListViewMode.Trash => Strings.NoteList_EmptyTrash,
+        NoteListViewMode.Todos => Strings.Todo_EmptyMessage,
+        _ => string.IsNullOrWhiteSpace(SearchText) && string.IsNullOrEmpty(ActiveTag)
             ? Strings.NoteList_EmptyNoNotes
-            : Strings.NoteList_EmptyNoMatch);
+            : Strings.NoteList_EmptyNoMatch,
+    };
 
-    public NotesListViewModel(INoteRepository repository, IWindowManager windowManager, IBackupService backupService, ILogger<NotesListViewModel> logger)
+    public NotesListViewModel(
+        INoteRepository repository, IWindowManager windowManager, IBackupService backupService,
+        ISettingsService settingsService, ILogger<NotesListViewModel> logger)
     {
         _repository = repository;
         _windowManager = windowManager;
         _backupService = backupService;
+        _settingsService = settingsService;
         _logger = logger;
+        _hideCompletedTodos = settingsService.Current.TodoHideCompleted;
     }
 
     partial void OnSearchTextChanged(string value)
     {
         RebuildItems();
+        if (IsTodoView) RebuildTodos();
         OnPropertyChanged(nameof(EmptyMessage));
     }
 
@@ -83,11 +108,12 @@ public sealed partial class NotesListViewModel : ObservableObject
         OnPropertyChanged(nameof(EmptyMessage));
     }
 
-    partial void OnShowTrashChanged(bool value)
+    partial void OnViewModeChanged(NoteListViewMode value)
     {
-        // 휴지통 모드에선 태그 필터를 초기화 (휴지통은 태그 인덱스를 갱신하지 않음).
-        if (value) ActiveTag = null;
+        // 휴지통/할일 모드에선 태그 필터를 초기화 (활성 탭 전용).
+        if (value != NoteListViewMode.Active) ActiveTag = null;
         RebuildItems();
+        if (value == NoteListViewMode.Todos) RebuildTodos();
         OnPropertyChanged(nameof(EmptyMessage));
     }
 
@@ -124,10 +150,147 @@ public sealed partial class NotesListViewModel : ObservableObject
             TotalCount = active.Count;
             TrashedCount = trashed.Count;
             RebuildItems();
+            RebuildTodos();
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to load notes for list view");
+        }
+    }
+
+    // ── 통합 할 일 뷰 (spec-2) ────────────────────────────────────────────────
+
+    private readonly ObservableCollection<TodoGroup> _todoGroups = new();
+    public ObservableCollection<TodoGroup> TodoGroups => _todoGroups;
+
+    [ObservableProperty]
+    private int _openTodoCount;   // 탭 배지: 전체 미완료 수(필터 무관)
+
+    [ObservableProperty]
+    private bool _hideCompletedTodos;
+
+    partial void OnHideCompletedTodosChanged(bool value)
+    {
+        _settingsService.Current.TodoHideCompleted = value;
+        _ = _settingsService.SaveAsync();
+        RebuildTodos();
+    }
+
+    /// 체크박스 수집 대상: 활성 노트 중 PlainText/Markdown 만(리치·HTML 은 소스 치환이 불가능).
+    private static bool IsTodoSource(Note n) =>
+        n.Format is NoteContentFormat.PlainText or NoteContentFormat.Markdown;
+
+    private void RebuildTodos()
+    {
+        var query = (SearchText ?? string.Empty).Trim();
+        _todoGroups.Clear();
+        var openTotal = 0;
+
+        foreach (var note in _activeRaw.Where(IsTodoSource))
+        {
+            var tasks = TodoExtraction.ExtractTasks(note.Content);
+            if (tasks.Count == 0) continue;
+            openTotal += tasks.Count(t => !t.IsChecked);
+
+            var theme = NotePalette.For(note.Color);
+            var items = new ObservableCollection<TodoItemViewModel>();
+            foreach (var t in tasks)
+            {
+                if (HideCompletedTodos && t.IsChecked) continue;
+                if (query.Length > 0 && !t.Text.Contains(query, StringComparison.OrdinalIgnoreCase)) continue;
+                items.Add(new TodoItemViewModel
+                {
+                    NoteId = note.Id,
+                    LineIndex = t.LineIndex,
+                    RawLine = t.RawLine,
+                    Text = t.Text,
+                    IsChecked = t.IsChecked,
+                });
+            }
+            if (items.Count == 0) continue;
+
+            var title = string.IsNullOrWhiteSpace(note.Title) ? Strings.NoteList_Untitled : note.Title;
+            var group = new TodoGroup(note.Id, title, Frozen(theme.Header), Frozen(theme.Foreground), items);
+            group.RefreshCount(tasks.Count(t => t.IsChecked), tasks.Count);
+            _todoGroups.Add(group);
+        }
+
+        OpenTodoCount = openTotal;
+        OnPropertyChanged(nameof(EmptyMessage));
+    }
+
+    [RelayCommand]
+    private void OpenTodoNote(Guid noteId) => _windowManager.FocusNoteById(noteId);
+
+    /// 할 일 체크/해제 — 라이브(열린 창) / 클로즈드(DB 직행) / 연동 파일 3경로(spec-2 §3.3).
+    /// CheckBox 의 TwoWay 바인딩이 IsChecked 를 먼저 뒤집은 뒤 실행되므로 item.IsChecked 가 목표 상태다.
+    [RelayCommand]
+    private async Task ToggleTodoAsync(TodoItemViewModel? item)
+    {
+        if (item is null) return;
+        var desired = item.IsChecked;
+        try
+        {
+            // 1) 최신 소스 확보 — 열린 창이 있으면 디바운스 미저장분까지 포함한 라이브 VM 이 원본.
+            if (!_windowManager.TryGetLiveNoteContent(item.NoteId, out var source, out _))
+            {
+                var fresh = await _repository.GetByIdAsync(item.NoteId).ConfigureAwait(true);
+                if (fresh is null) { await ReloadAsync().ConfigureAwait(true); return; }
+                source = fresh.Content;
+            }
+
+            // 2) 오프셋 1글자 토글. stale(그 사이 편집됨)이면 되돌리고 전체 재수집.
+            var newContent = TodoExtraction.ToggleLine(source, item.LineIndex, item.RawLine, desired);
+            if (newContent is null)
+            {
+                item.IsChecked = !desired;
+                await ReloadAsync().ConfigureAwait(true);
+                return;
+            }
+            if (string.Equals(newContent, source, StringComparison.Ordinal)) return;   // 이미 목표 상태
+
+            // 3) 영속 — 라이브 경로(창의 에디터+VM 주입 → 디바운스 저장) 우선.
+            if (!await _windowManager.TryUpdateLiveNoteContentAsync(item.NoteId, newContent).ConfigureAwait(true))
+            {
+                // 클로즈드 경로: DB 직행. 연동 노트면 원본 파일도 기록(안 하면 다음 열람 때 되덮임).
+                var note = await _repository.GetByIdAsync(item.NoteId).ConfigureAwait(true);
+                if (note is null) { await ReloadAsync().ConfigureAwait(true); return; }
+                note.Content = newContent;
+                note.PlainText = TextExtraction.ToPlainText(newContent, note.Format);
+                if (string.IsNullOrEmpty(note.LinkedFilePath))
+                {
+                    note.Title = TextExtraction.DeriveTitle(note.PlainText);
+                }
+                note.Tags = TextExtraction.ExtractTags(note.PlainText);
+                if (note.LinkedFilePath is { Length: > 0 } linkedPath)
+                {
+                    note.LinkedFileSyncedUtc = await LinkedFile.WriteAsync(linkedPath, newContent).ConfigureAwait(true);
+                }
+                await _repository.SaveContentAsync(note).ConfigureAwait(true);
+            }
+
+            // 4) 로컬 상태만 국소 갱신(전체 재수집 없이) — 캐시(_activeRaw)·항목·그룹 카운트.
+            var cached = _activeRaw.FirstOrDefault(n => n.Id == item.NoteId);
+            if (cached is not null)
+            {
+                cached.Content = newContent;
+                cached.PlainText = TextExtraction.ToPlainText(newContent, cached.Format);
+            }
+            item.RawLine = TodoExtraction.ToggleLine(item.RawLine, 0, item.RawLine, desired) ?? item.RawLine;
+
+            var group = _todoGroups.FirstOrDefault(g => g.NoteId == item.NoteId);
+            if (group is not null)
+            {
+                var done = group.DoneCount + (desired ? 1 : -1);
+                group.RefreshCount(done, group.TotalCount);
+                if (HideCompletedTodos && desired) group.Items.Remove(item);
+            }
+            OpenTodoCount += desired ? -1 : 1;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Todo toggle failed for note {NoteId}", item.NoteId);
+            item.IsChecked = !desired;   // 실패 시 체크 되돌림
         }
     }
 
@@ -377,3 +540,48 @@ public sealed partial class NotesListViewModel : ObservableObject
 }
 
 public sealed record TagFilter(string Tag, int Count);
+
+/// 통합 할 일 뷰의 항목 — 원본 노트의 특정 줄 하나를 가리킨다.
+public sealed partial class TodoItemViewModel : ObservableObject
+{
+    public required Guid NoteId { get; init; }
+    public required string Text { get; init; }
+    public int LineIndex { get; set; }
+    public string RawLine { get; set; } = string.Empty;   // 토글 시 stale 대조용(성공 시 갱신)
+
+    [ObservableProperty]
+    private bool _isChecked;
+}
+
+/// 통합 할 일 뷰의 노트별 그룹(헤더 = 노트 색 액센트 + 제목 + 완료 카운트).
+public sealed partial class TodoGroup : ObservableObject
+{
+    public TodoGroup(Guid noteId, string title, Brush accentBrush, Brush foregroundBrush,
+        ObservableCollection<TodoItemViewModel> items)
+    {
+        NoteId = noteId;
+        Title = title;
+        AccentBrush = accentBrush;
+        ForegroundBrush = foregroundBrush;
+        Items = items;
+    }
+
+    public Guid NoteId { get; }
+    public string Title { get; }
+    public Brush AccentBrush { get; }
+    public Brush ForegroundBrush { get; }
+    public ObservableCollection<TodoItemViewModel> Items { get; }
+
+    public int DoneCount { get; private set; }
+    public int TotalCount { get; private set; }
+
+    [ObservableProperty]
+    private string _countText = string.Empty;
+
+    public void RefreshCount(int done, int total)
+    {
+        DoneCount = done;
+        TotalCount = total;
+        CountText = string.Format(Strings.Todo_GroupCountFormat, done, total);
+    }
+}

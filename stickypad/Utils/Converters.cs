@@ -1,8 +1,10 @@
 using System;
 using System.Globalization;
+using System.Linq;
 using System.Windows.Data;
 using System.Windows.Media;
 using StickyPad.Models;
+using StickyPad.ViewModels;
 
 namespace StickyPad.Utils;
 
@@ -95,6 +97,26 @@ public sealed class ZeroCountToVisibilityConverter : IValueConverter
         value is int n && n == 0
             ? System.Windows.Visibility.Visible
             : System.Windows.Visibility.Collapsed;
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
+        Binding.DoNothing;
+}
+
+/// NotesListWindow 의 3탭(활성/휴지통/할일) 전용 Visibility 스위치.
+/// ConverterParameter 는 쉼표로 구분된 허용 ViewMode 목록(예: "Active" 또는 "Active,Trash").
+public sealed class ViewModeToVisibilityConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (value is not NoteListViewMode mode || parameter is not string allowed)
+        {
+            return System.Windows.Visibility.Collapsed;
+        }
+        var modes = allowed.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        return modes.Contains(mode.ToString(), StringComparer.OrdinalIgnoreCase)
+            ? System.Windows.Visibility.Visible
+            : System.Windows.Visibility.Collapsed;
+    }
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
         Binding.DoNothing;

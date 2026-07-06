@@ -175,6 +175,9 @@
   <data name="NoteList_TabTrash" xml:space="preserve">
     <value>휴지통</value>
   </data>
+  <data name="NoteList_TabTodos" xml:space="preserve">
+    <value>할 일</value>
+  </data>
   <data name="NoteList_EmptyTrashButton" xml:space="preserve">
     <value>휴지통 비우기</value>
   </data>
@@ -214,6 +217,15 @@
   <data name="NoteList_Untitled" xml:space="preserve">
     <value>(제목 없음)</value>
   </data>
+  <data name="Todo_HideCompleted" xml:space="preserve">
+    <value>완료 숨기기</value>
+  </data>
+  <data name="Todo_EmptyMessage" xml:space="preserve">
+    <value>체크박스(- [ ])가 있는 노트가 없습니다</value>
+  </data>
+  <data name="Todo_GroupCountFormat" xml:space="preserve">
+    <value>{0}/{1} 완료</value>
+  </data>
   <data name="Tray_Tooltip" xml:space="preserve">
     <value>StickyPad</value>
   </data>
@@ -231,6 +243,12 @@
   </data>
   <data name="Tray_AllNotes" xml:space="preserve">
     <value>전체 목록…  (Ctrl+Shift+L)</value>
+  </data>
+  <data name="Tray_TodoView" xml:space="preserve">
+    <value>할 일 보기</value>
+  </data>
+  <data name="Tray_QuickSwitcher" xml:space="preserve">
+    <value>빠른 전환…</value>
   </data>
   <data name="Tray_Settings" xml:space="preserve">
     <value>설정…</value>
@@ -616,5 +634,11 @@
   </data>
   <data name="Template_Todo" xml:space="preserve">
     <value>할 일 목록</value>
+  </data>
+  <data name="QuickSwitcher_Placeholder" xml:space="preserve">
+    <value>노트 이름 또는 #태그 검색…</value>
+  </data>
+  <data name="QuickSwitcher_NoResults" xml:space="preserve">
+    <value>일치하는 노트 없음</value>
   </data>
 </root>

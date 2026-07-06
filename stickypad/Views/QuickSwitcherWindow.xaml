@@ -1,0 +1,147 @@
+<Window
+    x:Class="StickyPad.Views.QuickSwitcherWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:res="clr-namespace:StickyPad.Resources"
+    xmlns:u="clr-namespace:StickyPad.Utils"
+    xmlns:vm="clr-namespace:StickyPad.ViewModels"
+    Width="480"
+    AllowsTransparency="True"
+    Background="Transparent"
+    FontFamily="Segoe UI"
+    ResizeMode="NoResize"
+    ShowInTaskbar="False"
+    SizeToContent="Height"
+    SnapsToDevicePixels="True"
+    Topmost="True"
+    UseLayoutRounding="True"
+    WindowStyle="None">
+
+    <Border
+        Background="White"
+        BorderBrush="#CCCCCC"
+        BorderThickness="1"
+        CornerRadius="8">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="20" Opacity="0.3" ShadowDepth="3" />
+        </Border.Effect>
+
+        <Grid Margin="12">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <Grid Grid.Row="0">
+                <TextBox
+                    x:Name="QueryBox"
+                    Height="36"
+                    Padding="10,8"
+                    BorderThickness="0"
+                    FontSize="15"
+                    Text="{Binding QueryText, UpdateSourceTrigger=PropertyChanged}" />
+                <TextBlock
+                    Margin="12,0,0,0"
+                    VerticalAlignment="Center"
+                    FontSize="15"
+                    Foreground="#999"
+                    IsHitTestVisible="False"
+                    Text="{x:Static res:Strings.QuickSwitcher_Placeholder}">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding QueryText}" Value="">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </Grid>
+
+            <Grid Grid.Row="1" Margin="0,10,0,0">
+                <ListBox
+                    x:Name="ResultsList"
+                    MaxHeight="420"
+                    BorderThickness="0"
+                    ItemsSource="{Binding Results}"
+                    ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                    SelectedIndex="{Binding SelectedIndex, Mode=TwoWay}">
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem">
+                            <Setter Property="Padding" Value="0" />
+                            <Setter Property="Margin" Value="0,0,0,4" />
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="ListBoxItem">
+                                        <Border
+                                            x:Name="Bd"
+                                            Padding="10,8"
+                                            Background="Transparent"
+                                            CornerRadius="6"
+                                            Cursor="Hand"
+                                            MouseLeftButtonUp="ResultRow_OnMouseLeftButtonUp">
+                                            <ContentPresenter />
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="Bd" Property="Background" Value="#F0F0F0" />
+                                            </Trigger>
+                                            <Trigger Property="IsSelected" Value="True">
+                                                <Setter TargetName="Bd" Property="Background" Value="#EAF3FF" />
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate DataType="{x:Type vm:QuickSwitcherItem}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <Rectangle
+                                    Grid.Column="0"
+                                    Width="4"
+                                    Margin="0,0,10,0"
+                                    Fill="{Binding AccentBrush}"
+                                    RadiusX="2"
+                                    RadiusY="2" />
+
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock
+                                        FontSize="14"
+                                        FontWeight="SemiBold"
+                                        TextTrimming="CharacterEllipsis"
+                                        u:HighlightedText.Segments="{Binding TitleSegments}" />
+                                    <TextBlock
+                                        Margin="0,3,0,0"
+                                        FontSize="11"
+                                        Foreground="#1976D2"
+                                        TextTrimming="CharacterEllipsis"
+                                        Visibility="{Binding TagsLine, Converter={StaticResource NonEmptyToVis}}"
+                                        u:HighlightedText.Segments="{Binding TagSegments}" />
+                                </StackPanel>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <TextBlock
+                    Margin="0,20,0,20"
+                    HorizontalAlignment="Center"
+                    FontSize="13"
+                    Foreground="#888"
+                    Text="{x:Static res:Strings.QuickSwitcher_NoResults}"
+                    Visibility="{Binding Results.Count, Converter={StaticResource ZeroToVis}}" />
+            </Grid>
+        </Grid>
+    </Border>
+</Window>

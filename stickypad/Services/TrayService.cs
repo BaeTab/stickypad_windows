@@ -81,6 +81,8 @@ public sealed class TrayService : ITrayService
         menu.Items.Add(BuildTemplateMenu());
         menu.Items.Add(MenuItem(Strings.Tray_OpenMarkdownFile, OpenMarkdownFile));
         menu.Items.Add(MenuItem(Strings.Tray_AllNotes, () => _windowManager.OpenNotesList()));
+        menu.Items.Add(MenuItem(Strings.Tray_TodoView, () => _windowManager.OpenTodoView()));
+        menu.Items.Add(MenuItem(Strings.Tray_QuickSwitcher, () => _windowManager.OpenQuickSwitcher()));
         menu.Items.Add(MenuItem(Strings.Tray_Settings, () => _windowManager.OpenSettings()));
         menu.Items.Add(new Separator());
         menu.Items.Add(MenuItem(Strings.Tray_ShowAll, () => _windowManager.ShowAll()));

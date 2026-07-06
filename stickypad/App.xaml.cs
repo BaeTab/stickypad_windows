@@ -131,6 +131,7 @@ public partial class App : Application
                 services.AddSingleton<IUpdateService, UpdateService>();
                 services.AddSingleton<ITrayService, TrayService>();
                 services.AddTransient<NotesListViewModel>();
+                services.AddTransient<QuickSwitcherViewModel>();
                 services.AddTransient<SettingsViewModel>();
             })
             .Build();

@@ -45,6 +45,7 @@ StickyPad lives in your system tray and puts a note on your desktop in a single 
 - 💾 **Local‑first** — an embedded LiteDB file on your machine, with one‑click JSON backup export/import.
 - 🌐 **Bilingual UI** — English & Korean; auto-detects your Windows language and switchable in Settings.
 - 🗄️ **Vault mode** — store your notes as human‑readable `.md` files in a folder you choose (Obsidian‑compatible). Put it in a cloud folder for multi‑device sync. Opt in under **Settings → Storage**; the built‑in database stays the default. External edits (cloud sync, Obsidian) are picked up live while the app is running.
+- ✅ **Unified to-do view** — every checkbox from every note, gathered in one tab; check it off right there and the source note updates. Plus a fuzzy **quick switcher (Ctrl+P)** to jump to any note.
 
 ## Screenshots
 
