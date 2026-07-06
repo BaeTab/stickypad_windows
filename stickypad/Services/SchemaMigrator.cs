@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using LiteDB;
 using Serilog;
@@ -21,6 +22,34 @@ public static class SchemaMigrator
         Array.Empty<(int, Action<LiteDatabase>)>();
 
     public static void Migrate(LiteDatabase db) => Migrate(db, CurrentVersion, Migrations);
+
+    /// 실제 스키마 마이그레이션이 필요할 때에 한해, DB 를 열기 전에 파일을 스냅샷한다.
+    /// DB 버전이 이미 최신이면(=일반 사용자) 아무것도 하지 않아 부담이 없다.
+    /// 마이그레이션이 잘못돼도 <c>notes.db.v{버전}.bak</c> 로 되돌릴 수 있게 한다.
+    public static void BackupBeforeMigration(string dbPath) => BackupBeforeMigration(dbPath, CurrentVersion);
+
+    internal static void BackupBeforeMigration(string dbPath, int currentVersion)
+    {
+        try
+        {
+            if (!File.Exists(dbPath)) return;
+
+            int version;
+            using (var probe = new LiteDatabase($"Filename={dbPath};Connection=shared"))
+                version = probe.UserVersion;
+            if (version < 1) version = 1;            // 0 = 버전 미표시 DB = baseline 1
+            if (version >= currentVersion) return;   // 올릴 것이 없음 → 스냅샷 불필요
+
+            var backup = $"{dbPath}.v{version}.bak";
+            if (File.Exists(backup)) return;       // 이 버전 스냅샷이 이미 있음
+            File.Copy(dbPath, backup);
+            Log.Information("Backed up DB before schema migration (v{Version}) -> {Backup}", version, backup);
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Pre-migration DB backup skipped");
+        }
+    }
 
     /// 테스트 가능한 코어. from==DB의 현재 버전에서 시작해 target 까지 한 단계씩 적용한다.
     internal static void Migrate(

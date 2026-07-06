@@ -13,6 +13,7 @@ using StickyPad.Utils;
 
 namespace StickyPad.Tests;
 
+[Collection("LiteDb")]   // 실제 공유모드 DB 파일을 여는 테스트가 있어 직렬화(플레이크 방지)
 public class SchemaMigratorTests
 {
     private static LiteDatabase NewDb() => new(new MemoryStream());
@@ -59,6 +60,36 @@ public class SchemaMigratorTests
         db.UserVersion = 5;                          // 앱보다 최신(다운그레이드 상황)
         SchemaMigrator.Migrate(db, 1, None);
         Assert.Equal(5, db.UserVersion);             // 손대지 않음
+    }
+
+    [Fact]
+    public void BackupBeforeMigration_SnapshotsWhenMigrationPending()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "sp-mig-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        var dbPath = Path.Combine(dir, "notes.db");
+        try
+        {
+            using (var db = new LiteDatabase($"Filename={dbPath};Connection=shared")) db.UserVersion = 1;
+            SchemaMigrator.BackupBeforeMigration(dbPath, currentVersion: 2);   // 앱이 v2 기대 → 스냅샷
+            Assert.True(File.Exists(dbPath + ".v1.bak"));
+        }
+        finally { try { Directory.Delete(dir, true); } catch { } }
+    }
+
+    [Fact]
+    public void BackupBeforeMigration_NoBackupWhenUpToDate()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "sp-mig-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        var dbPath = Path.Combine(dir, "notes.db");
+        try
+        {
+            using (var db = new LiteDatabase($"Filename={dbPath};Connection=shared")) db.UserVersion = 1;
+            SchemaMigrator.BackupBeforeMigration(dbPath, currentVersion: 1);   // 이미 최신 → 백업 없음
+            Assert.False(File.Exists(dbPath + ".v1.bak"));
+        }
+        finally { try { Directory.Delete(dir, true); } catch { } }
     }
 }
 

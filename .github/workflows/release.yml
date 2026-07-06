@@ -17,6 +17,10 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
+      # 테스트가 통과해야만 릴리즈를 배포한다(실패 빌드가 태그로 나가는 것을 막음).
+      - name: Test
+        run: dotnet test stickypad.Tests/stickypad.Tests.csproj -c Release --verbosity normal
+
       - name: Publish self-contained single-file exe
         shell: pwsh
         run: |

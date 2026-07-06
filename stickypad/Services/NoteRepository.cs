@@ -20,6 +20,8 @@ public sealed class NoteRepository : INoteRepository, IDisposable
     public NoteRepository(string dbPath)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
+        // 스키마 마이그레이션이 필요하면 열기 전에 DB 를 스냅샷(잘못돼도 되돌릴 수 있게).
+        SchemaMigrator.BackupBeforeMigration(dbPath);
         _db = new LiteDatabase($"Filename={dbPath};Connection=shared");
         // DB 스키마를 최신 버전까지 마이그레이션(2.0 데이터 모델 진화 대비 기반).
         SchemaMigrator.Migrate(_db);

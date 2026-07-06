@@ -5,6 +5,18 @@ All notable changes to StickyPad are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This file starts from the point it was introduced — earlier history lives in the git log.
 
+## [2.2.1] - 2026-07-06
+
+### Fixed
+- 위지윅 편집기의 툴바 툴팁·플레이스홀더가 앱 언어와 무관하게 한국어로만 표시되던 문제 — 앱 UI 언어(한/영)를 따르도록 지역화.
+
+### Changed
+- 릴리즈 워크플로가 배포 전 테스트를 통과하도록 게이트를 추가(실패 빌드가 태그로 나가는 것 방지).
+- 스키마 마이그레이션이 실제로 필요할 때 DB를 자동 스냅샷(`notes.db.v{버전}.bak`)해 되돌릴 수 있게 함.
+- 위지윅 에디터 의존성(CodeMirror 6)을 lockfile로 핀 고정하고, 번들이 소스와 어긋나지 않는지 CI로 검증.
+- 노트 창의 아이콘 전용 버튼에 접근성 이름(AutomationProperties)을 추가해 스크린리더를 지원.
+- 위지윅 편집 WebView 보안 재검토 결과를 문서화(docs/SECURITY-REVIEW).
+
 ## [2.2.0] - 2026-07-05
 
 ### Added

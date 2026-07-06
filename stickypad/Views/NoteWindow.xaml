@@ -141,7 +141,8 @@
                         Padding="0"
                         Cursor="Hand"
                         FocusVisualStyle="{x:Null}"
-                        ToolTip="{x:Static res:Strings.Note_ChangeColor}">
+                        ToolTip="{x:Static res:Strings.Note_ChangeColor}"
+                        AutomationProperties.Name="{x:Static res:Strings.Note_ChangeColor}">
                         <ToggleButton.Template>
                             <ControlTemplate TargetType="ToggleButton">
                                 <Ellipse
@@ -221,6 +222,7 @@
                             Style="{StaticResource FormatToggle}"
                             Tag="Rich"
                             ToolTip="{x:Static res:Strings.Note_ModeText}"
+                            AutomationProperties.Name="{x:Static res:Strings.Note_ModeText}"
                             Content="T" />
                         <ToggleButton
                             x:Name="ModeMarkdownToggle"
@@ -229,6 +231,7 @@
                             Style="{StaticResource FormatToggle}"
                             Tag="Markdown"
                             ToolTip="{x:Static res:Strings.Note_ModeMarkdown}"
+                            AutomationProperties.Name="{x:Static res:Strings.Note_ModeMarkdown}"
                             Content="M" />
                         <ToggleButton
                             x:Name="ModeHtmlToggle"
@@ -237,6 +240,7 @@
                             Style="{StaticResource FormatToggle}"
                             Tag="Html"
                             ToolTip="{x:Static res:Strings.Note_ModeHtml}"
+                            AutomationProperties.Name="{x:Static res:Strings.Note_ModeHtml}"
                             Content="&lt;/&gt;" />
                         <Border Style="{StaticResource VerticalSeparator}" />
                         <ToggleButton
@@ -245,22 +249,26 @@
                             Cursor="Hand"
                             Style="{StaticResource FormatToggle}"
                             ToolTip="{x:Static res:Strings.Note_WysiwygToggle}"
+                            AutomationProperties.Name="{x:Static res:Strings.Note_WysiwygToggle}"
                             Content="✎" />
                         <ToggleButton
                             Cursor="Hand"
                             IsChecked="{Binding IsPreviewMode}"
                             Style="{StaticResource FormatToggle}"
                             ToolTip="{x:Static res:Strings.Note_PreviewToggle}"
+                            AutomationProperties.Name="{x:Static res:Strings.Note_PreviewToggle}"
                             Content="Eye" />
                         <ToggleButton
                             Cursor="Hand"
                             IsChecked="{Binding IsAlwaysOnTop}"
                             Style="{StaticResource FormatToggle}"
                             ToolTip="{x:Static res:Strings.Note_AlwaysOnTop}"
+                            AutomationProperties.Name="{x:Static res:Strings.Note_AlwaysOnTop}"
                             Content="Pin" />
                         <Button
                             Style="{StaticResource ChromeButton}"
                             ToolTip="{x:Static res:Strings.Note_More}"
+                            AutomationProperties.Name="{x:Static res:Strings.Note_More}"
                             Click="MoreMenu_OnClick"
                             Content="⋯">
                             <Button.ContextMenu>
@@ -284,12 +292,14 @@
                             Click="DeleteButton_OnClick"
                             Style="{StaticResource ChromeButton}"
                             ToolTip="{x:Static res:Strings.Note_DeleteNote}"
+                            AutomationProperties.Name="{x:Static res:Strings.Note_DeleteNote}"
                             Content="Del" />
                         <Button
                             Margin="0,0,4,0"
                             Click="CloseButton_OnClick"
                             Style="{StaticResource ChromeButton}"
                             ToolTip="{x:Static res:Strings.Note_HideSaves}"
+                            AutomationProperties.Name="{x:Static res:Strings.Note_HideSaves}"
                             Content="x" />
                     </StackPanel>
                 </Grid>
@@ -345,6 +355,7 @@
                             Minimum="0.5"
                             SmallChange="0.05"
                             ToolTip="{x:Static res:Strings.Note_Opacity}"
+                            AutomationProperties.Name="{x:Static res:Strings.Note_Opacity}"
                             Value="{Binding Opacity, Mode=TwoWay}" />
                     </StackPanel>
 
@@ -357,7 +368,8 @@
                             FontSize="12"
                             ItemsSource="{Binding FontSizeChoices, RelativeSource={RelativeSource AncestorType=Window}}"
                             SelectionChanged="FontSizeCombo_OnSelectionChanged"
-                            ToolTip="{x:Static res:Strings.Note_FontSize}" />
+                            ToolTip="{x:Static res:Strings.Note_FontSize}"
+                            AutomationProperties.Name="{x:Static res:Strings.Note_FontSize}" />
 
                         <Border Style="{StaticResource VerticalSeparator}" />
 
@@ -367,6 +379,7 @@
                             FontWeight="Bold"
                             Style="{StaticResource FormatToggle}"
                             ToolTip="{x:Static res:Strings.Note_Bold}"
+                            AutomationProperties.Name="{x:Static res:Strings.Note_Bold}"
                             Content="B" />
                         <ToggleButton
                             x:Name="ItalicToggle"
@@ -374,19 +387,22 @@
                             FontStyle="Italic"
                             Style="{StaticResource FormatToggle}"
                             ToolTip="{x:Static res:Strings.Note_Italic}"
+                            AutomationProperties.Name="{x:Static res:Strings.Note_Italic}"
                             Content="I" />
                         <ToggleButton
                             x:Name="UnderlineToggle"
                             Click="UnderlineToggle_OnClick"
                             Style="{StaticResource FormatToggle}"
-                            ToolTip="{x:Static res:Strings.Note_Underline}">
+                            ToolTip="{x:Static res:Strings.Note_Underline}"
+                            AutomationProperties.Name="{x:Static res:Strings.Note_Underline}">
                             <TextBlock Text="U" TextDecorations="Underline" />
                         </ToggleButton>
                         <ToggleButton
                             x:Name="StrikeToggle"
                             Click="StrikeToggle_OnClick"
                             Style="{StaticResource FormatToggle}"
-                            ToolTip="{x:Static res:Strings.Note_Strikethrough}">
+                            ToolTip="{x:Static res:Strings.Note_Strikethrough}"
+                            AutomationProperties.Name="{x:Static res:Strings.Note_Strikethrough}">
                             <TextBlock Text="S" TextDecorations="Strikethrough" />
                         </ToggleButton>
 
@@ -397,18 +413,21 @@
                             Click="AlignLeftToggle_OnClick"
                             Style="{StaticResource FormatToggle}"
                             ToolTip="{x:Static res:Strings.Note_AlignLeft}"
+                            AutomationProperties.Name="{x:Static res:Strings.Note_AlignLeft}"
                             Content="◧" />
                         <ToggleButton
                             x:Name="AlignCenterToggle"
                             Click="AlignCenterToggle_OnClick"
                             Style="{StaticResource FormatToggle}"
                             ToolTip="{x:Static res:Strings.Note_AlignCenter}"
+                            AutomationProperties.Name="{x:Static res:Strings.Note_AlignCenter}"
                             Content="≡" />
                         <ToggleButton
                             x:Name="AlignRightToggle"
                             Click="AlignRightToggle_OnClick"
                             Style="{StaticResource FormatToggle}"
                             ToolTip="{x:Static res:Strings.Note_AlignRight}"
+                            AutomationProperties.Name="{x:Static res:Strings.Note_AlignRight}"
                             Content="◨" />
 
                         <Border Style="{StaticResource VerticalSeparator}" />
@@ -418,32 +437,38 @@
                             Click="BulletsToggle_OnClick"
                             Style="{StaticResource FormatToggle}"
                             ToolTip="{x:Static res:Strings.Note_BulletedList}"
+                            AutomationProperties.Name="{x:Static res:Strings.Note_BulletedList}"
                             Content="•" />
                         <ToggleButton
                             x:Name="NumberingToggle"
                             Click="NumberingToggle_OnClick"
                             Style="{StaticResource FormatToggle}"
                             ToolTip="{x:Static res:Strings.Note_NumberedList}"
+                            AutomationProperties.Name="{x:Static res:Strings.Note_NumberedList}"
                             Content="1." />
                         <Button
                             Click="TaskItem_OnClick"
                             Style="{StaticResource ChromeButton}"
                             ToolTip="{x:Static res:Strings.Note_InsertTask}"
+                            AutomationProperties.Name="{x:Static res:Strings.Note_InsertTask}"
                             Content="☐" />
                         <Button
                             Click="InlineCode_OnClick"
                             Style="{StaticResource ChromeButton}"
                             ToolTip="{x:Static res:Strings.Note_InlineCode}"
+                            AutomationProperties.Name="{x:Static res:Strings.Note_InlineCode}"
                             Content="&lt;/&gt;" />
                         <Button
                             Click="CodeBlock_OnClick"
                             Style="{StaticResource ChromeButton}"
                             ToolTip="{x:Static res:Strings.Note_CodeBlock}"
+                            AutomationProperties.Name="{x:Static res:Strings.Note_CodeBlock}"
                             Content="{}{ }" />
                         <Button
                             Click="ClearFormatting_OnClick"
                             Style="{StaticResource ChromeButton}"
                             ToolTip="{x:Static res:Strings.Note_ClearFormatting}"
+                            AutomationProperties.Name="{x:Static res:Strings.Note_ClearFormatting}"
                             Content="Tx" />
                     </StackPanel>
                 </DockPanel>

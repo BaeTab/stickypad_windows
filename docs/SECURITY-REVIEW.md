@@ -32,3 +32,15 @@
 2. 라이브 미리보기 원격 이미지 옵트인
 3. 임시 파일 즉시 정리·시작 시 청소
 4. 가져오기 크기·개수 상한
+
+## 위지윅(WYSIWYG) 에디터 WebView 재검토 (2026-07-06, v2.1.0+)
+
+v2.1.0에서 마크다운 위지윅 편집을 위해 **편집 전용 WebView2 한 곳에만** 스크립트/웹메시지를 다시 허용했다(렌더 미리보기 `Preview`는 여전히 `IsScriptEnabled=false` 유지). 아래 격리를 재검토해 코드 실행·유출 경로가 없음을 확인했다.
+
+- **네트워크 전면 차단** — 페이지 CSP `default-src 'none'; script-src 'self'; connect-src 'none'`(인라인/eval 스크립트·모든 네트워크 요청 불가), 가상 호스트 매핑은 `DenyCors`(로컬 자산만).
+- **페이지 밖 이탈 차단** — `NavigationStarting`이 `https://stickypad.editor/` 외 URL을 취소, `NewWindowRequested` 차단. 노트의 링크는 편집기에서 클릭 가능한 앵커가 아니라 소스 텍스트다.
+- **내용은 데이터-only** — C#→JS는 `setMarkdown(<JSON 문자열>)`뿐이며 `JsonSerializer.Serialize`가 `<`·`>`·`U+2028/2029` 등을 이스케이프해 JS 문자열을 안전하게 만든다. 내용은 CodeMirror의 문서 텍스트(DOM 텍스트 노드)로만 들어가며 HTML로 파싱/주입되지 않는다 → 크래프트된 노트로 XSS/코드 실행 불가.
+- **호스트 노출 없음** — `AreHostObjectsAllowed=false`, DevTools/기본 컨텍스트메뉴/자동완성 비활성. JS→C#는 `{type,md}` 문자열 메시지를 `JsonDocument`로 파싱하는 것뿐.
+- **자산 무결성** — 에디터 번들은 어셈블리에 임베드되어 프로세스 시작 시 `%LocalAppData%`로 추출·매핑되고 매 실행마다 덮어써진다. LocalAppData 쓰기 권한을 가진 로컬 공격자는 이미 exe 자체를 교체할 수 있으므로 새로운 위협면이 아니며, CSP·호스트 차단으로 피해가 제한된다.
+
+**결론:** 새 위협면 없음. `?lang=` 파라미터는 ISO 언어 코드(en/ko)로만 채워지고 `URLSearchParams`로 파싱돼 주입 벡터가 아니다.

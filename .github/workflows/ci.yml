@@ -24,3 +24,26 @@ jobs:
 
       - name: Test
         run: dotnet test stickypad.Tests/stickypad.Tests.csproj -c Release --no-build --verbosity normal
+
+  # WYSIWYG 에디터 번들(CodeMirror 6)이 소스와 어긋나지 않는지 검증 —
+  # 핀 고정된 의존성(package-lock)으로 재빌드해 커밋된 자산과 대조(EOL 차이는 무시).
+  editor-bundle:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Rebuild editor bundle and verify it matches the committed asset
+        shell: bash
+        working-directory: tools/mdeditor
+        run: |
+          npm ci
+          npm run build
+          if ! diff --strip-trailing-cr -q dist/mdeditor.bundle.js ../../stickypad/Assets/mdeditor/mdeditor.bundle.js; then
+            echo "::error::Editor bundle is out of date. Run 'npm run build' in tools/mdeditor and copy dist/mdeditor.bundle.js to stickypad/Assets/mdeditor/."
+            exit 1
+          fi
+          echo "Editor bundle is up to date."

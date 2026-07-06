@@ -190,6 +190,24 @@ const formatKeymap = keymap.of([
   { key: "Mod-Shift-.", run: COMMANDS.quote, preventDefault: true },
 ]);
 
+// ── 지역화 (앱 언어를 ?lang= 로 전달받아 툴바 툴팁·플레이스홀더에 적용) ──────
+const I18N = {
+  en: {
+    placeholder: "Type here…  (Ctrl+B bold, Ctrl+I italic)",
+    bold: "Bold (Ctrl+B)", italic: "Italic (Ctrl+I)", strike: "Strikethrough (Ctrl+Shift+X)",
+    code: "Inline code (Ctrl+`)", h1: "Heading 1 (Ctrl+Alt+1)", h2: "Heading 2 (Ctrl+Alt+2)",
+    bullet: "Bulleted list", numbered: "Numbered list", task: "Checklist", quote: "Quote", link: "Link (Ctrl+K)",
+  },
+  ko: {
+    placeholder: "여기에 입력하세요…  (Ctrl+B 굵게, Ctrl+I 기울임)",
+    bold: "굵게 (Ctrl+B)", italic: "기울임 (Ctrl+I)", strike: "취소선 (Ctrl+Shift+X)",
+    code: "인라인 코드 (Ctrl+`)", h1: "제목 1 (Ctrl+Alt+1)", h2: "제목 2 (Ctrl+Alt+2)",
+    bullet: "글머리표 목록", numbered: "번호 목록", task: "체크박스 목록", quote: "인용", link: "링크 (Ctrl+K)",
+  },
+};
+const lang = (new URLSearchParams(location.search).get("lang") || "").toLowerCase().startsWith("ko") ? "ko" : "en";
+const L = I18N[lang];
+
 // ── 호스트(C#) 브리지 ────────────────────────────────────────────────────
 let view = null;
 let suppress = false;
@@ -224,7 +242,7 @@ function createEditor(initial) {
         livePreview,
         theme,
         changeListener,
-        placeholder("여기에 입력하세요… (Ctrl+B 굵게, Ctrl+I 기울임)"),
+        placeholder(L.placeholder),
         Prec.high(formatKeymap),
         Prec.high(keymap.of([indentWithTab, ...defaultKeymap, ...historyKeymap])),
       ],
@@ -236,9 +254,11 @@ function createEditor(initial) {
 // 툴바 버튼 배선 — 클릭해도 에디터 선택이 유지되도록 mousedown 을 막는다.
 function wireToolbar() {
   document.querySelectorAll("#toolbar [data-cmd]").forEach((btn) => {
+    const key = btn.getAttribute("data-cmd");
+    if (L[key]) btn.title = L[key];   // 툴팁을 앱 언어로
     btn.addEventListener("mousedown", (e) => e.preventDefault());
     btn.addEventListener("click", () => {
-      const cmd = COMMANDS[btn.getAttribute("data-cmd")];
+      const cmd = COMMANDS[key];
       if (cmd) cmd(view);
     });
   });

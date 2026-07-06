@@ -75,7 +75,9 @@ public sealed class MarkdownWysiwyg
     {
         await InitAsync().ConfigureAwait(true);
         _ready = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        _web.CoreWebView2.Navigate($"https://{VirtualHost}/editor.html");
+        // 앱 UI 언어를 에디터로 전달 — 툴바 툴팁·플레이스홀더 지역화.
+        var lang = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
+        _web.CoreWebView2.Navigate($"https://{VirtualHost}/editor.html?lang={lang}");
         await _ready.Task.ConfigureAwait(true);       // 'ready' 메시지 대기
         await SetMarkdownAsync(markdown).ConfigureAwait(true);
     }
