@@ -166,6 +166,33 @@ public sealed partial class NoteViewModel : ObservableObject, IDisposable
             : TextExtraction.DeriveTitle(plain);
     }
 
+    /// 볼트 감시가 반영하는 외부 변경을 저장 스케줄 없이 주입한다(hydrate) —
+    /// 반영이 다시 파일 쓰기(에코)를 만들지 않도록 Schedule/UpdateContent 재진입을 차단하고,
+    /// 이후 위치 저장 등이 옛 내용을 되쓰지 않도록 Note 필드까지 함께 맞춘다.
+    public void HydrateExternal(string content, NoteContentFormat format)
+    {
+        _hydrating = true;
+        try
+        {
+            Content = content;
+            Format = format;
+            var plain = TextExtraction.ToPlainText(content, format);
+            PlainText = plain;
+            Title = IsLinkedFile
+                ? System.IO.Path.GetFileName(Note.LinkedFilePath!)
+                : TextExtraction.DeriveTitle(plain);
+
+            Note.Content = content;
+            Note.Format = format;
+            Note.PlainText = plain;
+            Note.Title = Title;
+            Note.Tags = TextExtraction.ExtractTags(plain);
+
+            _lastSyncedText = content;   // 이 내용이 곧 파일과 동기화된 기준
+        }
+        finally { _hydrating = false; }
+    }
+
     private void Schedule()
     {
         if (_hydrating) return;

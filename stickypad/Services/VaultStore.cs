@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -22,10 +23,32 @@ public sealed class VaultStore
     private const string IndexFileName = ".stickypad-index.json";
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
 
+    /// 자기쓰기 원장의 에코 판정 시간창 — 이 안에 온 FSW 이벤트는 우리가 쓴 것으로 본다.
+    private const int SelfWriteWindowSeconds = 3;
+
     private readonly string _folder;
     private readonly Dictionary<Guid, string> _files = new(); // id -> 파일명(폴더 기준)
 
+    /// 자기쓰기 원장(파일명 → 기록 시각 UTC). 볼트 감시자의 에코 억제용 — IO 절약 최적화일 뿐,
+    /// 판정이 틀려도 diff 무결성이 오동작을 막는다(spec-5 §3.4).
+    private readonly ConcurrentDictionary<string, DateTime> _selfWrites = new(StringComparer.OrdinalIgnoreCase);
+
     public VaultStore(string folder) => _folder = folder;
+
+    private void RecordSelfWrite(string fileName) => _selfWrites[fileName] = DateTime.UtcNow;
+
+    /// 최근(3초) 자기쓰기 파일이면 true. 시간창을 지난 항목은 게으르게 청소한다.
+    public bool IsRecentSelfWrite(string fileName) => IsRecentSelfWrite(fileName, DateTime.UtcNow);
+
+    internal bool IsRecentSelfWrite(string fileName, DateTime nowUtc)
+    {
+        if (_selfWrites.TryGetValue(fileName, out var at))
+        {
+            if ((nowUtc - at).TotalSeconds <= SelfWriteWindowSeconds) return true;
+            _selfWrites.TryRemove(fileName, out _);
+        }
+        return false;
+    }
 
     private sealed record NoteState(
         string File, double X, double Y, double Width, double Height,
@@ -42,10 +65,60 @@ public sealed class VaultStore
         foreach (var file in Directory.EnumerateFiles(_folder, "*.md", SearchOption.TopDirectoryOnly))
         {
             Note note;
-            try { note = VaultMarkdown.FromMarkdown(File.ReadAllText(file), Path.GetFileNameWithoutExtension(file)); }
+            bool hadId;
+            try { note = VaultMarkdown.FromMarkdown(File.ReadAllText(file), Path.GetFileNameWithoutExtension(file), out hadId); }
             catch { continue; }
 
-            _files[note.Id] = Path.GetFileName(file); // 실제 파일명 기억 → 이후 저장 시 재사용
+            var name = Path.GetFileName(file);
+
+            // 프런트매터 id 가 없는 손수 추가 .md — 파일명 기반의 안정적 id 를 부여한다.
+            // 랜덤 id 면 리로드마다 다른 노트로 보여 감시 diff 가 진동(알림 스팸·숨은 창 누적)하고
+            // 사이드카 상태(위치 등)도 재시작마다 유실된다. 편집하는 순간 이 id 가 파일에 영속된다.
+            if (!hadId) note.Id = DisplacedId(Guid.Empty, name);
+
+            // id 중복(충돌 사본의 전형) — 정본이 아닌 쪽이 원본을 캐시에서 가리고, 이후 저장이
+            // 충돌 사본 파일에 기록되는 데이터 사고를 막는다(spec-5 §3.6). 읽기 전용 패스 —
+            // 여기서 파일을 다시 쓰지 않는다. 밀려난 쪽은 새 Guid 로 별도 노트가 되어 목록에서
+            // 사용자가 확인·정리할 수 있다(그 노트를 편집하는 순간 새 id 가 파일에 영속된다).
+            if (_files.TryGetValue(note.Id, out var existingName))
+            {
+                var indexFile = index.TryGetValue(note.Id.ToString(), out var idxState) ? idxState.File : null;
+                bool newIsCanonical;
+                if (indexFile is not null && string.Equals(name, indexFile, StringComparison.OrdinalIgnoreCase))
+                    newIsCanonical = true;                                   // 인덱스가 새 파일을 가리킴
+                else if (indexFile is not null && string.Equals(existingName, indexFile, StringComparison.OrdinalIgnoreCase))
+                    newIsCanonical = false;                                  // 인덱스가 기존 파일을 가리킴
+                else
+                {
+                    // 인덱스로 판정 불가 → 충돌 사본 패턴이 아닌 쪽을 정본으로. 그래도 모호하면 먼저 읽힌 쪽.
+                    bool Sibling(string f) => File.Exists(Path.Combine(_folder, f));
+                    var existingIsConflict = ConflictCopyDetector.IsConflictCopy(existingName, Sibling);
+                    var newIsConflict = ConflictCopyDetector.IsConflictCopy(name, Sibling);
+                    newIsCanonical = existingIsConflict && !newIsConflict;
+                }
+
+                if (newIsCanonical)
+                {
+                    // 먼저 읽힌 쪽이 밀려난다 — 결정적 파생 id 로 별도 노트 유지(리로드마다 같은 id →
+                    // 감시 diff 가 유령 추가/삭제로 진동하지 않는다). 파일은 다시 쓰지 않는다.
+                    var displaced = result.First(n => n.Id == note.Id);
+                    displaced.Id = DisplacedId(note.Id, existingName);
+                    _files[displaced.Id] = existingName;
+                    _files[note.Id] = name;
+                    if (index.TryGetValue(note.Id.ToString(), out var s2)) Apply(note, s2);
+                    result.Add(note);
+                }
+                else
+                {
+                    // 새로 읽힌 쪽이 밀려난다.
+                    note.Id = DisplacedId(note.Id, name);
+                    _files[note.Id] = name;
+                    result.Add(note);   // 사이드카 상태는 정본 소유 — 적용하지 않음
+                }
+                continue;
+            }
+
+            _files[note.Id] = name; // 실제 파일명 기억 → 이후 저장 시 재사용
             if (index.TryGetValue(note.Id.ToString(), out var s)) Apply(note, s);
             result.Add(note);
         }
@@ -61,6 +134,7 @@ public sealed class VaultStore
         {
             var name = EnsureFileName(note);
             File.WriteAllText(Path.Combine(_folder, name), VaultMarkdown.ToMarkdown(note));
+            RecordSelfWrite(name);
             index[note.Id.ToString()] = StateOf(note, name);
         }
         WriteIndex(index);
@@ -72,6 +146,7 @@ public sealed class VaultStore
         Directory.CreateDirectory(_folder);
         var name = EnsureFileName(note);
         File.WriteAllText(Path.Combine(_folder, name), VaultMarkdown.ToMarkdown(note));
+        RecordSelfWrite(name);
         var index = ReadIndex();
         index[note.Id.ToString()] = StateOf(note, name);
         WriteIndex(index);
@@ -83,6 +158,7 @@ public sealed class VaultStore
         if (_files.TryGetValue(id, out var name))
         {
             try { File.Delete(Path.Combine(_folder, name)); } catch { /* 이미 없거나 잠김 — 무시 */ }
+            RecordSelfWrite(name);
             _files.Remove(id);
         }
         var index = ReadIndex();
@@ -100,6 +176,15 @@ public sealed class VaultStore
         var name = ExportNaming.UniqueFileName(ExportNaming.SafeFileName(note.Title), ".md", taken);
         _files[note.Id] = name;
         return name;
+    }
+
+    /// 밀려난(id 중복) 파일의 인메모리 id — (원본 id, 파일명)에서 결정적으로 파생해
+    /// 리로드가 반복돼도 같은 id 가 나온다. 사용자가 그 노트를 편집하면 이 id 가 파일에 영속된다.
+    private static Guid DisplacedId(Guid originalId, string fileName)
+    {
+        var bytes = System.Security.Cryptography.SHA256.HashData(
+            System.Text.Encoding.UTF8.GetBytes(originalId.ToString("N") + "|" + fileName.ToLowerInvariant()));
+        return new Guid(bytes.AsSpan(0, 16));
     }
 
     private static NoteState StateOf(Note note, string name) => new(

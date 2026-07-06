@@ -258,6 +258,85 @@ public sealed class WindowManager : IWindowManager
         return true;
     }
 
+    /// 볼트 감시가 계산한 외부 변경 diff 를 열린 창에 세밀 반영한다(spec-5 §3.7).
+    /// UI 스레드 전용 — 감시자가 Dispatcher 로 넘겨 호출한다. ReloadAsync(전 창 폐기)와 달리
+    /// 해당 노트 창만 갱신/생성/정리하므로 무관한 창은 깜빡이지 않는다.
+    public async Task ApplyVaultDiffAsync(VaultDiff diff)
+    {
+        // 변경: 미저장 편집 없으면 조용히 교체, 있으면(또는 WYSIWYG 편집 중) 파일 우선/내 편집 유지 프롬프트.
+        foreach (var (fresh, oldContent) in diff.Changed)
+        {
+            var win = _windows.FirstOrDefault(w => w.ViewModel.Id == fresh.Id);
+            if (win is null) continue;   // 창이 없으면 캐시 갱신만으로 충분(다음 열람 때 최신)
+
+            var dirty = win.IsWysiwygActive
+                || !VaultContentEquals(win.ViewModel.Content, oldContent);
+            if (dirty)
+            {
+                var choice = MessageBox.Show(win,
+                    Strings.Note_FileChangedPrompt, Strings.Note_FileChangedTitle,
+                    MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
+                if (choice != MessageBoxResult.Yes) continue;   // 내 편집 유지 → 다음 저장이 파일을 되덮음
+            }
+            await win.ApplyExternalContentAsync(fresh.Content, fresh.Format).ConfigureAwait(true);
+        }
+
+        // 추가: 창만 만들고 Show 하지 않는다(§2.1 — 깜짝 팝업·창 폭탄 방지). 알림은 감시자가 1건 보냄.
+        foreach (var note in diff.Added)
+        {
+            if (note.IsDeleted) continue;
+            if (_windows.Any(w => w.ViewModel.Id == note.Id)) continue;
+            BuildWindow(note);
+        }
+
+        // 삭제: 미저장 편집 없으면 조용히 닫기(파일이 원본). 있으면 "다시 저장할까요?" 프롬프트.
+        foreach (var (id, oldContent) in diff.Removed)
+        {
+            var win = _windows.FirstOrDefault(w => w.ViewModel.Id == id);
+            if (win is null) continue;
+            var vm = win.ViewModel;
+
+            var dirty = win.IsWysiwygActive
+                || !VaultContentEquals(vm.Content, oldContent);
+            if (dirty)
+            {
+                var choice = MessageBox.Show(win,
+                    Strings.Vault_FileDeletedPrompt, Strings.Note_FileChangedTitle,
+                    MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.Yes);
+                if (choice == MessageBoxResult.Yes)
+                {
+                    // 유지: SaveContentAsync 는 캐시에 없는 id 를 무시하므로 Upsert 로 재등록 —
+                    // 파일이 새로 만들어지며 노트가 볼트에 복귀한다.
+                    vm.Note.Content = vm.Content;
+                    vm.Note.Format = vm.Format;
+                    vm.Note.PlainText = vm.PlainText;
+                    vm.Note.Title = vm.Title;
+                    vm.Note.Tags = TextExtraction.ExtractTags(vm.PlainText);
+                    await _repository.UpsertAsync(vm.Note).ConfigureAwait(true);
+                    continue;
+                }
+            }
+
+            vm.SuspendFileSync();   // 닫힘 flush 가 연동 파일을 건드리지 않게
+            win.RequestClose();
+            _windows.Remove(win);
+            vm.Dispose();
+        }
+
+        if (_notesListWindow?.IsVisible == true)
+        {
+            _ = _notesListWindow.ShowAndReloadAsync();
+        }
+    }
+
+    /// 미저장 편집 판정용 내용 비교 — 끝 공백·CRLF 차이는 편집으로 치지 않는다
+    /// (볼트 직렬화가 어차피 정규화하는 부분이라 유령 프롬프트만 만든다).
+    private static bool VaultContentEquals(string? a, string? b) =>
+        string.Equals(
+            (a ?? string.Empty).Replace("\r\n", "\n").TrimEnd(),
+            (b ?? string.Empty).Replace("\r\n", "\n").TrimEnd(),
+            StringComparison.Ordinal);
+
     /// 내용 없는(비연동) 노트 창을 정리한다. 노트가 하나도 없을 때 시작하면 자동으로 뜨는
     /// 빈 자리표시 노트가, 사용자가 템플릿·파일 열기로 실제 노트를 띄울 때 옆에 남지 않게 한다.
     /// 닫으면 <see cref="OnWindowDismissed"/> 가 빈 노트를 purge·제거·dispose 한다.

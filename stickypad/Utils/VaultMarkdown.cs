@@ -40,7 +40,12 @@ public static class VaultMarkdown
     }
 
     /// `.md` 텍스트를 노트로 파싱한다. 프런트매터가 없거나 불완전해도 최선을 다해 노트를 만든다.
-    public static Note FromMarkdown(string content, string? fallbackTitle = null)
+    public static Note FromMarkdown(string content, string? fallbackTitle = null) =>
+        FromMarkdown(content, fallbackTitle, out _);
+
+    /// <paramref name="hadFrontmatterId"/>: 프런트매터에 유효한 id 가 있었는지 — 없으면 호출자
+    /// (볼트 로드)가 파일명 기반의 안정적 id 를 부여해 리로드마다 id 가 바뀌는 진동을 막는다.
+    public static Note FromMarkdown(string content, string? fallbackTitle, out bool hadFrontmatterId)
     {
         content = (content ?? string.Empty).Replace("\r\n", "\n");
         var front = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -71,7 +76,9 @@ public static class VaultMarkdown
         var format = front.TryGetValue("format", out var f) && Enum.TryParse<NoteContentFormat>(f, true, out var fmt)
             ? fmt
             : NoteContentFormat.Markdown; // 볼트 파일 기본은 Markdown
-        var trimmedBody = body.TrimStart('\n');
+        // ToMarkdown 이 본문을 TrimEnd()+'\n' 으로 쓰므로 파싱도 같은 정규형으로 —
+        // 왕복이 멱등이 되어 저장 직후 리로드가 유령 변경(diff)을 만들지 않는다.
+        var trimmedBody = body.TrimStart('\n').TrimEnd();
 
         var note = new Note
         {
@@ -83,12 +90,19 @@ public static class VaultMarkdown
             ModifiedAt = ParseDate(front, "modified") ?? DateTime.UtcNow,
         };
 
-        if (front.TryGetValue("id", out var idStr) && Guid.TryParse(idStr, out var id)) note.Id = id;
-        // else: Note.Id 기본값(새 Guid) 사용 — 프런트매터 없는 외부 .md 도 취급 가능.
+        hadFrontmatterId = false;
+        if (front.TryGetValue("id", out var idStr) && Guid.TryParse(idStr, out var id))
+        {
+            note.Id = id;
+            hadFrontmatterId = true;
+        }
+        // else: Note.Id 기본값(새 Guid) — 볼트 로드는 hadFrontmatterId 로 파일명 기반 안정 id 를 덧입힌다.
 
         note.PlainText = TextExtraction.ToPlainText(trimmedBody, format);
-        note.Title = UnquoteYaml(front.GetValueOrDefault("title"))
-            is { Length: > 0 } t ? t
+        // 프런트매터에 title 키가 있으면(빈 값 포함) 그 값이 정본 — 빈 제목이 파일명으로
+        // 둔갑해 왕복마다 유령 변경을 만들지 않게 한다. 키가 없을 때만 본문/파일명에서 유도.
+        note.Title = front.TryGetValue("title", out var rawTitle)
+            ? UnquoteYaml(rawTitle) ?? string.Empty
             : (TextExtraction.DeriveTitle(note.PlainText) is { Length: > 0 } d ? d : (fallbackTitle ?? string.Empty));
         note.Tags = ParseTags(front.GetValueOrDefault("tags"), note.PlainText);
         return note;

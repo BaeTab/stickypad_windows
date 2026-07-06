@@ -597,6 +597,35 @@ Failed files: {2}</value>
   <data name="Vault_NoMarkdownFiles" xml:space="preserve">
     <value>No .md files found in that folder.</value>
   </data>
+  <data name="Vault_OpenInExplorer" xml:space="preserve">
+    <value>Open folder (Explorer)</value>
+  </data>
+  <data name="Vault_OpenInObsidian" xml:space="preserve">
+    <value>Open in Obsidian</value>
+  </data>
+  <data name="Vault_OpenInVsCode" xml:space="preserve">
+    <value>Open in VS Code</value>
+  </data>
+  <data name="Vault_ConflictTitle" xml:space="preserve">
+    <value>Vault conflict copy found</value>
+  </data>
+  <data name="Vault_ConflictBodyFormat" xml:space="preserve">
+    <value>"{0}" — looks like a cloud sync conflict. Review its contents, then clean it up.</value>
+  </data>
+  <data name="Vault_ConflictManyFormat" xml:space="preserve">
+    <value>{0} conflict copies found: {1} and others</value>
+  </data>
+  <data name="Vault_NotesAddedFormat" xml:space="preserve">
+    <value>{0} new note(s) were added to the vault.</value>
+  </data>
+  <data name="Vault_FileDeletedPrompt" xml:space="preserve">
+    <value>This note's file was deleted from the vault.
+Save your current edits as a new file now?</value>
+  </data>
+  <data name="Vault_FolderMissingFormat" xml:space="preserve">
+    <value>Couldn't find the vault folder:
+{0}</value>
+  </data>
   <data name="Print_WindowTitle" xml:space="preserve">
     <value>StickyPad — Print</value>
   </data>

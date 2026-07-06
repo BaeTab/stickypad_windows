@@ -112,6 +112,18 @@ public partial class App : Application
                 });
                 services.AddSingleton<ISettingsService>(sp => new SettingsService(
                     settingsPath, sp.GetRequiredService<ILogger<SettingsService>>()));
+                // 볼트 폴더 감시(볼트 모드 전용) — 협력자를 델리게이트로 조립해 순환 의존 없이 결합.
+                services.AddSingleton<IVaultWatcher>(sp =>
+                {
+                    var repo = sp.GetRequiredService<INoteRepository>() as VaultRepository;
+                    var wm = sp.GetRequiredService<IWindowManager>();
+                    return new VaultWatcherService(
+                        isRecentSelfWrite: f => repo?.IsRecentSelfWrite(f) ?? false,
+                        reloadAsync: () => repo?.ReloadWithDiffAsync() ?? Task.FromResult(VaultDiff.Empty),
+                        applyAsync: d => Current.Dispatcher.InvokeAsync(() => wm.ApplyVaultDiffAsync(d)).Task.Unwrap(),
+                        notify: (t, m) => sp.GetService<ITrayService>()?.ShowNotification(t, m),
+                        sp.GetRequiredService<ILogger<VaultWatcherService>>());
+                });
                 services.AddSingleton<IAutoStartService, AutoStartService>();
                 services.AddSingleton<IHotkeyService, HotkeyService>();
                 services.AddSingleton<IWindowManager, WindowManager>();
@@ -146,6 +158,13 @@ public partial class App : Application
             await manager.RestoreAllAsync().ConfigureAwait(true);
 
             _host.Services.GetRequiredService<ITrayService>().Initialize();
+
+            // 볼트 모드면 폴더 감시 시작(트레이 초기화 이후 — 알림 콜백이 준비된 뒤).
+            if (_host.Services.GetRequiredService<INoteRepository>() is VaultRepository
+                && _host.Services.GetRequiredService<ISettingsService>().Current.VaultPath is { Length: > 0 } vaultPath)
+            {
+                _host.Services.GetRequiredService<IVaultWatcher>().Start(vaultPath);
+            }
 
             // 실행 중 다른 프로세스가 넘겨주는 파일 경로를 받아 여는 named-pipe 서버 시작.
             // 파이프 입력은 같은 세션의 어떤 프로세스든 보낼 수 있으므로, 커맨드라인과 동일하게
@@ -214,6 +233,7 @@ public partial class App : Application
             _instanceChannel?.Dispose();
             if (_host is not null)
             {
+                _host.Services.GetService<IVaultWatcher>()?.Dispose();   // 트레이보다 먼저(알림 콜백 사용 중지)
                 _host.Services.GetService<IHotkeyService>()?.Unregister();
                 _host.Services.GetService<ITrayService>()?.Dispose();
                 if (_host.Services.GetService<ISettingsService>() is { } settings)

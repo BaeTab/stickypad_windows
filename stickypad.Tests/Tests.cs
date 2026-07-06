@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using LiteDB;
@@ -562,6 +563,305 @@ public class VaultBootstrapTests
             Assert.Equal("Keep", seeded[0].Title);
         }
         finally { try { Directory.Delete(root, true); } catch { } }
+    }
+}
+
+public class VaultIdDuplicateTests
+{
+    private static string NewDir() =>
+        Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "sp-dup-" + Guid.NewGuid().ToString("N"))).FullName;
+
+    [Fact]
+    public void Load_DuplicateId_IndexPointedFileIsCanonical_FilesUntouched()
+    {
+        var dir = NewDir();
+        try
+        {
+            // 정본을 SaveOne 으로 만들어 인덱스가 "메모.md" 를 가리키게 한 뒤, 같은 id 의 충돌 사본을 복사.
+            var note = new Note { Title = "메모", Content = "원본", PlainText = "원본", Format = NoteContentFormat.Markdown };
+            new VaultStore(dir).SaveOne(note);
+            var canonicalPath = Path.Combine(dir, "메모.md");
+            var conflictPath = Path.Combine(dir, "메모 (충돌 사본).md");
+            File.Copy(canonicalPath, conflictPath);
+            var beforeCanonical = File.ReadAllText(canonicalPath);
+            var beforeConflict = File.ReadAllText(conflictPath);
+
+            var store = new VaultStore(dir);
+            var loaded = store.Load();
+
+            Assert.Equal(2, loaded.Count);                              // 둘 다 노트로 보인다
+            Assert.Single(loaded, n => n.Id == note.Id);                // 원본 id 는 하나뿐
+            var canonical = loaded.First(n => n.Id == note.Id);
+            var displaced = loaded.First(n => n.Id != note.Id);
+            Assert.NotEqual(Guid.Empty, displaced.Id);
+
+            // 정본 편집이 정본 파일에 기록되는지 — 데이터 사고 경로 차단의 핵심.
+            canonical.Content = "수정됨";
+            store.SaveOne(canonical);
+            Assert.Contains("수정됨", File.ReadAllText(canonicalPath));
+            Assert.Equal(beforeConflict, File.ReadAllText(conflictPath));   // 사본은 불변(읽기 전용 패스)
+
+            // Load 자체는 파일을 다시 쓰지 않는다.
+            Assert.True(beforeCanonical.Length > 0);
+
+            // 밀려난 노트의 id 는 리로드가 반복돼도 안정적이어야 한다 —
+            // 아니면 감시 diff 가 사본 존재 내내 유령 추가/삭제로 진동한다.
+            var again = new VaultStore(dir).Load();
+            Assert.Equal(displaced.Id, again.First(n => n.Id != note.Id).Id);
+        }
+        finally { try { Directory.Delete(dir, true); } catch { } }
+    }
+
+    [Fact]
+    public void Load_DuplicateId_NoIndexMatch_ConflictPatternIsDisplaced()
+    {
+        var dir = NewDir();
+        try
+        {
+            var note = new Note { Title = "b", Content = "x", PlainText = "x", Format = NoteContentFormat.Markdown };
+            var md = VaultMarkdown.ToMarkdown(note);
+            File.WriteAllText(Path.Combine(dir, "b.md"), md);
+            File.WriteAllText(Path.Combine(dir, "b (충돌 사본).md"), md);
+            // 인덱스 없음 → 충돌 패턴 파일이 밀려나는 쪽이어야 한다.
+
+            var store = new VaultStore(dir);
+            var loaded = store.Load();
+
+            Assert.Equal(2, loaded.Count);
+            var canonical = loaded.First(n => n.Id == note.Id);
+            canonical.Content = "canon";
+            store.SaveOne(canonical);
+            Assert.Contains("canon", File.ReadAllText(Path.Combine(dir, "b.md")));               // 정본 = b.md
+            Assert.DoesNotContain("canon", File.ReadAllText(Path.Combine(dir, "b (충돌 사본).md")));
+        }
+        finally { try { Directory.Delete(dir, true); } catch { } }
+    }
+
+    [Fact]
+    public void Load_FrontmatterlessFile_GetsStableIdAcrossReloads()
+    {
+        var dir = NewDir();
+        try
+        {
+            // Obsidian 등에서 손수 만든, 프런트매터 없는 .md
+            File.WriteAllText(Path.Combine(dir, "loose.md"), "# 손수 추가\n내용");
+
+            var first = new VaultStore(dir).Load().Single();
+            var second = new VaultStore(dir).Load().Single();
+
+            Assert.Equal(first.Id, second.Id);          // 리로드/재시작 간 id 안정
+            Assert.NotEqual(Guid.Empty, first.Id);
+            Assert.Equal("# 손수 추가\n내용", File.ReadAllText(Path.Combine(dir, "loose.md")));  // 파일 불변
+        }
+        finally { try { Directory.Delete(dir, true); } catch { } }
+    }
+
+    [Fact]
+    public void SelfWriteLedger_TracksWritesWithinWindow()
+    {
+        var dir = NewDir();
+        try
+        {
+            var store = new VaultStore(dir);
+            var note = new Note { Title = "l", Content = "x", PlainText = "x", Format = NoteContentFormat.Markdown };
+            store.SaveOne(note);
+
+            Assert.True(store.IsRecentSelfWrite("l.md"));                                    // 방금 씀
+            Assert.True(store.IsRecentSelfWrite("L.MD", DateTime.UtcNow));                   // 대소문자 무시
+            Assert.False(store.IsRecentSelfWrite("l.md", DateTime.UtcNow.AddSeconds(4)));    // 시간창 밖
+            Assert.False(store.IsRecentSelfWrite("other.md"));
+
+            store.DeleteFile(note.Id);
+            Assert.True(store.IsRecentSelfWrite("l.md"));                                    // 삭제도 자기쓰기
+        }
+        finally { try { Directory.Delete(dir, true); } catch { } }
+    }
+}
+
+public class VaultDiffTests
+{
+    private static string NewDir() =>
+        Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "sp-diff-" + Guid.NewGuid().ToString("N"))).FullName;
+
+    private static Note NewNote(string title, string content) => new()
+    {
+        Title = title, Content = content, PlainText = content, Format = NoteContentFormat.Markdown,
+    };
+
+    [Fact]
+    public async Task ReloadWithDiff_DetectsAddChangeRemove_AndOldContent()
+    {
+        var dir = NewDir();
+        try
+        {
+            using var repo = new VaultRepository(dir);
+            var keep = NewNote("keep", "same");
+            var edit = NewNote("edit", "before");
+            var gone = NewNote("gone", "bye");
+            await repo.UpsertAsync(keep);
+            await repo.UpsertAsync(edit);
+            await repo.UpsertAsync(gone);
+
+            // 무변경 → 3집합 공집합 (에코 백스톱 규약: SaveOne 직후 리로드는 no-op)
+            var none = await repo.ReloadWithDiffAsync();
+            Assert.True(none.IsEmpty);
+
+            // 외부 변경 시뮬레이션: 수정 / 삭제 / 추가
+            var editPath = Path.Combine(dir, "edit.md");
+            File.WriteAllText(editPath, File.ReadAllText(editPath).Replace("before", "after"));
+            File.Delete(Path.Combine(dir, "gone.md"));
+            File.WriteAllText(Path.Combine(dir, "new.md"), "# 새 노트\n외부에서 추가");
+
+            var diff = await repo.ReloadWithDiffAsync();
+
+            Assert.Single(diff.Changed);
+            Assert.Equal(edit.Id, diff.Changed[0].Fresh.Id);
+            Assert.Contains("after", diff.Changed[0].Fresh.Content);
+            Assert.Contains("before", diff.Changed[0].OldContent);      // 이전 내용 정확
+
+            Assert.Single(diff.Removed);
+            Assert.Equal(gone.Id, diff.Removed[0].Id);
+            Assert.Equal("bye", diff.Removed[0].OldContent);
+
+            Assert.Single(diff.Added);
+            Assert.Contains("외부에서 추가", diff.Added[0].Content);
+        }
+        finally { try { Directory.Delete(dir, true); } catch { } }
+    }
+
+    [Fact]
+    public async Task ReloadWithDiff_ConcurrentWithSaves_NoLossNoException()
+    {
+        var dir = NewDir();
+        try
+        {
+            using var repo = new VaultRepository(dir);
+            var note = NewNote("c", "v0");
+            await repo.UpsertAsync(note);
+
+            // diff 리로드와 저장을 맞부딪혀도(_gate 직렬화) 예외·유실이 없어야 한다.
+            for (var i = 1; i <= 30; i++)
+            {
+                note.Content = $"v{i}";
+                note.PlainText = note.Content;
+                await Task.WhenAll(
+                    repo.ReloadWithDiffAsync(),
+                    repo.SaveContentAsync(note));
+            }
+
+            var all = await repo.GetAllAsync();
+            var survived = Assert.Single(all);
+            Assert.Equal(note.Id, survived.Id);
+            Assert.StartsWith("v", survived.Content);
+        }
+        finally { try { Directory.Delete(dir, true); } catch { } }
+    }
+}
+
+public class VaultWatcherServiceTests
+{
+    private static string NewDir() =>
+        Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "sp-watch-" + Guid.NewGuid().ToString("N"))).FullName;
+
+    private static VaultWatcherService NewWatcher(
+        string folder, Func<string, bool> echo, Func<Task<VaultDiff>> reload,
+        Action<string, string>? notify = null)
+    {
+        var w = new VaultWatcherService(
+            echo, reload, _ => Task.CompletedTask, notify ?? ((_, _) => { }),
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<VaultWatcherService>.Instance);
+        w.SetFolderForTest(folder);
+        return w;
+    }
+
+    [Fact]
+    public async Task AllEchoBatch_SkipsReload()
+    {
+        var dir = NewDir();
+        try
+        {
+            var reloads = 0;
+            using var w = NewWatcher(dir, _ => true,
+                () => { Interlocked.Increment(ref reloads); return Task.FromResult(VaultDiff.Empty); });
+
+            await w.ProcessBatchForTestAsync(new[] { Path.Combine(dir, "a.md"), Path.Combine(dir, "b.md") });
+            Assert.Equal(0, reloads);   // 전량 에코 → 리로드 안 함
+        }
+        finally { try { Directory.Delete(dir, true); } catch { } }
+    }
+
+    [Fact]
+    public async Task MixedBatch_ReloadsOnce()
+    {
+        var dir = NewDir();
+        try
+        {
+            var reloads = 0;
+            using var w = NewWatcher(dir, f => f == "mine.md",
+                () => { Interlocked.Increment(ref reloads); return Task.FromResult(VaultDiff.Empty); });
+
+            await w.ProcessBatchForTestAsync(new[] { Path.Combine(dir, "mine.md"), Path.Combine(dir, "theirs.md") });
+            Assert.Equal(1, reloads);   // 하나라도 외부 변경이면 1회 리로드
+        }
+        finally { try { Directory.Delete(dir, true); } catch { } }
+    }
+
+    [Fact]
+    public async Task ConcurrentCycles_AreSerialized()
+    {
+        var dir = NewDir();
+        try
+        {
+            var inFlight = 0; var maxInFlight = 0; var reloads = 0;
+            using var w = NewWatcher(dir, _ => false, async () =>
+            {
+                var now = Interlocked.Increment(ref inFlight);
+                InterlockedMax(ref maxInFlight, now);
+                await Task.Delay(50);
+                Interlocked.Decrement(ref inFlight);
+                Interlocked.Increment(ref reloads);
+                return VaultDiff.Empty;
+            });
+
+            await Task.WhenAll(
+                w.ProcessBatchForTestAsync(new[] { Path.Combine(dir, "x.md") }),
+                w.ProcessBatchForTestAsync(new[] { Path.Combine(dir, "y.md") }));
+
+            Assert.Equal(1, maxInFlight);   // 사이클 동시 1개(직렬화)
+            Assert.True(reloads >= 1);      // 두 번째 배치가 첫 사이클에 흡수될 수 있음(경로 누적)
+        }
+        finally { try { Directory.Delete(dir, true); } catch { } }
+
+        static void InterlockedMax(ref int target, int value)
+        {
+            int snapshot;
+            while (value > (snapshot = Volatile.Read(ref target)))
+            {
+                if (Interlocked.CompareExchange(ref target, value, snapshot) == snapshot) break;
+            }
+        }
+    }
+
+    [Fact]
+    public async Task ConflictCopyInBatch_NotifiesOncePerSession()
+    {
+        var dir = NewDir();
+        try
+        {
+            File.WriteAllText(Path.Combine(dir, "메모.md"), "x");
+            File.WriteAllText(Path.Combine(dir, "메모 (충돌 사본).md"), "x");
+
+            var notifications = 0;
+            using var w = NewWatcher(dir, _ => false, () => Task.FromResult(VaultDiff.Empty),
+                (_, _) => notifications++);
+
+            var conflictPath = Path.Combine(dir, "메모 (충돌 사본).md");
+            await w.ProcessBatchForTestAsync(new[] { conflictPath });
+            await w.ProcessBatchForTestAsync(new[] { conflictPath });   // 같은 파일 재이벤트
+
+            Assert.Equal(1, notifications);   // 세션 내 1회만
+        }
+        finally { try { Directory.Delete(dir, true); } catch { } }
     }
 }
 
@@ -1149,5 +1449,152 @@ public class HtmlRendererDocumentTests
 
         Assert.Contains("<h1", html);   // Markdig 로 헤딩 렌더
         Assert.Contains("<li", html);   // 목록 렌더
+    }
+}
+
+public class ConflictCopyDetectorTests
+{
+    private static readonly Func<string, bool> AlwaysTrue = _ => true;
+    private static readonly Func<string, bool> AlwaysFalse = _ => false;
+
+    // ── Dropbox (EN) ──────────────────────────────────────────────────────
+    [Theory]
+    [InlineData("notes (DESKTOP's conflicted copy 2026-07-01).md")]        // 날짜 포함
+    [InlineData("notes (DESKTOP's conflicted copy 2026-07-01 (2)).md")]    // 날짜 + 카운터
+    [InlineData("notes (Bob's conflicted copy).md")]                       // 날짜 없음
+    [InlineData("NOTES (BOB'S CONFLICTED COPY).MD")]                       // 대소문자 무시
+    public void DropboxEnglishPattern_IsConflictCopy(string fileName)
+    {
+        Assert.True(ConflictCopyDetector.IsConflictCopy(fileName, AlwaysFalse));
+    }
+
+    // ── Dropbox (KO) ──────────────────────────────────────────────────────
+    [Theory]
+    [InlineData("노트 (충돌이 발생한 사본 2026-07-01).md")]
+    [InlineData("이름 (충돌 사본).md")]
+    public void DropboxKoreanPattern_IsConflictCopy(string fileName)
+    {
+        Assert.True(ConflictCopyDetector.IsConflictCopy(fileName, AlwaysFalse));
+    }
+
+    // ── Syncthing ─────────────────────────────────────────────────────────
+    [Theory]
+    [InlineData("plan.sync-conflict-20260701-093012-ABCDEF.md")]  // 기기 표시 포함
+    [InlineData("plan.sync-conflict-20260701-093012.md")]         // 기기 표시 없음
+    public void SyncthingPattern_IsConflictCopy(string fileName)
+    {
+        Assert.True(ConflictCopyDetector.IsConflictCopy(fileName, AlwaysFalse));
+    }
+
+    // ── OneDrive: 기계명 일치 + 원본 실존 이중 조건 ───────────────────────
+    [Fact]
+    public void OneDrivePattern_MachineNameMatches_AndOriginalExists_IsConflictCopy()
+    {
+        var fileName = $"todo-{Environment.MachineName}.md";
+        Assert.True(ConflictCopyDetector.IsConflictCopy(fileName, name => name == "todo.md"));
+    }
+
+    [Fact]
+    public void OneDrivePattern_NumberedSuffix_AndOriginalExists_IsConflictCopy()
+    {
+        var fileName = $"todo-{Environment.MachineName}-2.md";
+        Assert.True(ConflictCopyDetector.IsConflictCopy(fileName, name => name == "todo.md"));
+    }
+
+    [Fact]
+    public void OneDrivePattern_MachineNameMatches_ButOriginalMissing_IsNotConflictCopy()
+    {
+        var fileName = $"todo-{Environment.MachineName}.md";
+        Assert.False(ConflictCopyDetector.IsConflictCopy(fileName, AlwaysFalse));
+    }
+
+    [Fact]
+    public void OneDrivePattern_MachineNameMismatch_IsNotConflictCopy()
+    {
+        var fileName = $"todo-{Environment.MachineName}X.md";   // 다른 기계명
+        Assert.False(ConflictCopyDetector.IsConflictCopy(fileName, AlwaysTrue));  // 원본 존재해도 무관
+    }
+
+    // ── 오탐 없음 ─────────────────────────────────────────────────────────
+    [Theory]
+    [InlineData("week-plan-2026.md")]           // 평범한 하이픈 파일명
+    [InlineData("my-conflicted-thoughts.md")]   // "conflicted" 단어는 있으나 괄호 패턴 아님
+    public void NormalHyphenatedFileNames_AreNotConflictCopies(string fileName)
+    {
+        Assert.False(ConflictCopyDetector.IsConflictCopy(fileName, AlwaysTrue));
+    }
+}
+
+public class ExternalAppLocatorTests
+{
+    [Fact]
+    public void FindVsCode_PrefersLocalAppDataCandidate()
+    {
+        var expected = Path.Combine(@"C:\Users\test\AppData\Local", "Programs", "Microsoft VS Code", "Code.exe");
+        string? Env(string name) => name switch
+        {
+            "LOCALAPPDATA" => @"C:\Users\test\AppData\Local",
+            "ProgramFiles" => @"C:\Program Files",
+            "PATH" => @"C:\some\dir",
+            _ => null,
+        };
+        Assert.Equal(expected, ExternalAppLocator.FindVsCode(p => p == expected, Env));
+    }
+
+    [Fact]
+    public void FindVsCode_FallsBackToProgramFiles_WhenLocalAppDataCandidateMissing()
+    {
+        var expected = Path.Combine(@"C:\Program Files", "Microsoft VS Code", "Code.exe");
+        string? Env(string name) => name switch
+        {
+            "LOCALAPPDATA" => @"C:\Users\test\AppData\Local",
+            "ProgramFiles" => @"C:\Program Files",
+            "PATH" => null,
+            _ => null,
+        };
+        Assert.Equal(expected, ExternalAppLocator.FindVsCode(p => p == expected, Env));
+    }
+
+    [Fact]
+    public void FindVsCode_FallsBackToPathCodeCmd_WhenExeCandidatesMissing()
+    {
+        var dir = @"C:\tools\vscode-bin";
+        var expected = Path.Combine(dir, "code.cmd");
+        string? Env(string name) => name switch
+        {
+            "LOCALAPPDATA" => @"C:\Users\test\AppData\Local",
+            "ProgramFiles" => @"C:\Program Files",
+            "PATH" => $@"C:\other;{dir};C:\another",
+            _ => null,
+        };
+        Assert.Equal(expected, ExternalAppLocator.FindVsCode(p => p == expected, Env));
+    }
+
+    [Fact]
+    public void FindVsCode_SkipsEmptyPathEntries()
+    {
+        var dir = @"C:\tools\vscode-bin";
+        var expected = Path.Combine(dir, "code.cmd");
+        string? Env(string name) => name switch
+        {
+            "LOCALAPPDATA" => null,
+            "ProgramFiles" => null,
+            "PATH" => $@";;{dir};",
+            _ => null,
+        };
+        Assert.Equal(expected, ExternalAppLocator.FindVsCode(p => p == expected, Env));
+    }
+
+    [Fact]
+    public void FindVsCode_ReturnsNull_WhenNoCandidateExists()
+    {
+        string? Env(string name) => name switch
+        {
+            "LOCALAPPDATA" => @"C:\Users\test\AppData\Local",
+            "ProgramFiles" => @"C:\Program Files",
+            "PATH" => @"C:\other;C:\another",
+            _ => null,
+        };
+        Assert.Null(ExternalAppLocator.FindVsCode(_ => false, Env));
     }
 }

@@ -454,6 +454,30 @@ public partial class NoteWindow : Window
         _viewModel.UpdateContent(md, NoteContentFormat.Markdown);   // 마크다운 소스로 저장
     }
 
+    /// WYSIWYG 편집이 켜져 있는지 — 볼트 감시가 "미저장 편집 있음"으로 취급하는 근거.
+    internal bool IsWysiwygActive => _wysiwygOn;
+
+    /// 볼트 감시가 반영하는 외부 변경 적용: VM hydrate(저장 스케줄 없음) + 에디터/WYSIWYG 교체 +
+    /// 미리보기 재렌더. 연동 파일 외부 변경 반영(ReloadLinkedFileAsync)과 같은 성격의 경로다.
+    internal async Task ApplyExternalContentAsync(string content, NoteContentFormat format)
+    {
+        _viewModel.HydrateExternal(content, format);
+
+        if (_wysiwygOn && _wysiwyg is not null && format == NoteContentFormat.Markdown)
+        {
+            await _wysiwyg.SetMarkdownAsync(content).ConfigureAwait(true);
+        }
+        else
+        {
+            if (_wysiwygOn) await ExitWysiwygAsync(save: false).ConfigureAwait(true);  // 포맷이 바뀐 드문 경우
+            ReplaceEditorText(content);
+        }
+
+        SyncModeButtons();
+        UpdateToolbarVisibility();
+        if (!_wysiwygOn) UpdateContentView();   // 분할/미리보기 재구성 + RenderPreview
+    }
+
     private static bool PrefersWysiwyg()
     {
         try { return App.Services.GetRequiredService<ISettingsService>().Current.PreferWysiwygMarkdown; }

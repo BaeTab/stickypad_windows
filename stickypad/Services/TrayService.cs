@@ -1,8 +1,11 @@
 using System;
+using System.Diagnostics;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using H.NotifyIcon;
+using H.NotifyIcon.Core;
 using Microsoft.Extensions.Logging;
 using StickyPad.Models;
 using StickyPad.Resources;
@@ -16,22 +19,28 @@ public sealed class TrayService : ITrayService
     private readonly IBackupService _backupService;
     private readonly IAutoStartService _autoStartService;
     private readonly IUpdateService _updateService;
+    private readonly ISettingsService _settingsService;
     private readonly ILogger<TrayService> _logger;
 
     private TaskbarIcon? _icon;
     private MenuItem? _autoStartMenu;
+    private MenuItem? _openFolderMenu;
+    private MenuItem? _obsidianMenu;
+    private MenuItem? _vsCodeMenu;
 
     public TrayService(
         IWindowManager windowManager,
         IBackupService backupService,
         IAutoStartService autoStartService,
         IUpdateService updateService,
+        ISettingsService settingsService,
         ILogger<TrayService> logger)
     {
         _windowManager = windowManager;
         _backupService = backupService;
         _autoStartService = autoStartService;
         _updateService = updateService;
+        _settingsService = settingsService;
         _logger = logger;
     }
 
@@ -118,9 +127,16 @@ public sealed class TrayService : ITrayService
             {
                 _autoStartMenu.IsChecked = _autoStartService.IsEnabled;
             }
+            RefreshVaultMenu();
         };
 
         return menu;
+    }
+
+    public void ShowNotification(string title, string message)
+    {
+        try { _icon?.ShowNotification(title, message, NotificationIcon.Info); }
+        catch (Exception ex) { _logger.LogError(ex, "Failed to show tray notification"); }
     }
 
     private async void OpenMarkdownFile()
@@ -158,7 +174,61 @@ public sealed class TrayService : ITrayService
             try { await _backupService.ImportVaultAsync(); }
             catch (Exception ex) { _logger.LogError(ex, "Vault import failed"); }
         }));
+
+        parent.Items.Add(new Separator());
+        _openFolderMenu = MenuItem(Strings.Vault_OpenInExplorer, OpenVaultFolder);
+        _obsidianMenu = MenuItem(Strings.Vault_OpenInObsidian, OpenInObsidian);
+        _vsCodeMenu = MenuItem(Strings.Vault_OpenInVsCode, OpenInVsCode);
+        parent.Items.Add(_openFolderMenu);
+        parent.Items.Add(_obsidianMenu);
+        parent.Items.Add(_vsCodeMenu);
+
         return parent;
+    }
+
+    /// 볼트 모드가 아니거나 미설치인 항목은 숨긴다(비활성 아님) — 메뉴 Opened 시마다 재평가하므로
+    /// 앱 재시작 없이 설치/제거·저장소 전환이 반영된다(_autoStartMenu 와 같은 패턴).
+    private void RefreshVaultMenu()
+    {
+        var settings = _settingsService.Current;
+        var isVault = settings.StorageMode == "vault" && !string.IsNullOrWhiteSpace(settings.VaultPath);
+
+        if (_openFolderMenu is not null)
+            _openFolderMenu.Visibility = isVault ? Visibility.Visible : Visibility.Collapsed;
+        if (_obsidianMenu is not null)
+            _obsidianMenu.Visibility = isVault && ExternalAppLocator.IsObsidianInstalled() ? Visibility.Visible : Visibility.Collapsed;
+        if (_vsCodeMenu is not null)
+            _vsCodeMenu.Visibility = isVault && ExternalAppLocator.IsVsCodeAvailable() ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void OpenVaultFolder()
+    {
+        var path = _settingsService.Current.VaultPath;
+        if (string.IsNullOrWhiteSpace(path) || !Directory.Exists(path))
+        {
+            MessageBox.Show(string.Format(Strings.Vault_FolderMissingFormat, path ?? string.Empty), "StickyPad",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        try
+        {
+            var psi = new ProcessStartInfo("explorer.exe") { UseShellExecute = true };
+            psi.ArgumentList.Add(path);
+            Process.Start(psi);
+        }
+        catch (Exception ex) { _logger.LogError(ex, "Open vault folder failed"); }
+    }
+
+    private void OpenInObsidian()
+    {
+        try { ExternalAppLocator.OpenObsidian(_settingsService.Current.VaultPath!); }
+        catch (Exception ex) { _logger.LogError(ex, "Open in Obsidian failed"); }
+    }
+
+    private void OpenInVsCode()
+    {
+        try { ExternalAppLocator.OpenVsCode(_settingsService.Current.VaultPath!); }
+        catch (Exception ex) { _logger.LogError(ex, "Open in VS Code failed"); }
     }
 
     private static MenuItem MenuItem(string header, Action action)

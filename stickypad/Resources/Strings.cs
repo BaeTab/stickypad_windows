@@ -167,6 +167,15 @@ public static class Strings
     public static string Vault_ImportConfirmFormat => Get(nameof(Vault_ImportConfirmFormat));
     public static string Vault_ImportedFormat => Get(nameof(Vault_ImportedFormat));
     public static string Vault_NoMarkdownFiles => Get(nameof(Vault_NoMarkdownFiles));
+    public static string Vault_OpenInExplorer => Get(nameof(Vault_OpenInExplorer));
+    public static string Vault_OpenInObsidian => Get(nameof(Vault_OpenInObsidian));
+    public static string Vault_OpenInVsCode => Get(nameof(Vault_OpenInVsCode));
+    public static string Vault_ConflictTitle => Get(nameof(Vault_ConflictTitle));
+    public static string Vault_ConflictBodyFormat => Get(nameof(Vault_ConflictBodyFormat));
+    public static string Vault_ConflictManyFormat => Get(nameof(Vault_ConflictManyFormat));
+    public static string Vault_NotesAddedFormat => Get(nameof(Vault_NotesAddedFormat));
+    public static string Vault_FileDeletedPrompt => Get(nameof(Vault_FileDeletedPrompt));
+    public static string Vault_FolderMissingFormat => Get(nameof(Vault_FolderMissingFormat));
 
     public static string Print_WindowTitle => Get(nameof(Print_WindowTitle));
     public static string Print_PrepareFailedFormat => Get(nameof(Print_PrepareFailedFormat));

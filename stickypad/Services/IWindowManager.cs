@@ -25,4 +25,7 @@ public interface IWindowManager
     void OpenSettings();
     bool FocusNoteByTitle(string title);
     bool FocusNoteById(Guid id);
+
+    /// 볼트 감시가 계산한 외부 변경 diff 를 열린 창에 세밀 반영한다(UI 스레드에서만 호출).
+    Task ApplyVaultDiffAsync(VaultDiff diff);
 }
